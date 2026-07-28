@@ -66,10 +66,12 @@ export function useClients() {
           method: 'PUT',
           body: formData,
         });
+        if (!res.ok) throw new Error(`Upload failed: ${res.status} ${await res.text()}`);
         client = await res.json();
         setClients((prev) => prev.map((c) => (c.id === existingId ? client : c)));
       } else {
         const res = await fetch('/api/clients', { method: 'POST', body: formData });
+        if (!res.ok) throw new Error(`Upload failed: ${res.status} ${await res.text()}`);
         client = await res.json();
         setClients((prev) => [...prev, client]);
       }
