@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put, del } from '@vercel/blob';
+import { put, del, head } from '@vercel/blob';
 import { getClient, saveClient } from '@/lib/redis';
 
 // Proxy CSV through server — blobUrl is never sent to the browser
@@ -11,13 +11,18 @@ export async function GET(
   const client = await getClient(id);
   if (!client) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const res = await fetch(client.blobUrl);
-  if (!res.ok) return NextResponse.json({ error: 'Blob fetch failed' }, { status: 502 });
-  const text = await res.text();
-
-  return new NextResponse(text, {
-    headers: { 'Content-Type': 'text/csv; charset=utf-8' },
-  });
+  try {
+    const blob = await head(client.blobUrl, { token: process.env.BLOB_READ_WRITE_TOKEN });
+    const res = await fetch(blob.downloadUrl);
+    if (!res.ok) return NextResponse.json({ error: 'Blob fetch failed' }, { status: 502 });
+    const text = await res.text();
+    return new NextResponse(text, {
+      headers: { 'Content-Type': 'text/csv; charset=utf-8' },
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: `Blob read failed: ${msg}` }, { status: 500 });
+  }
 }
 
 export async function PUT(
@@ -36,7 +41,7 @@ export async function PUT(
   }
 
   const blob = await put(`clients/${id}/data.csv`, file, {
-    access: 'public',
+    access: 'private',
     contentType: 'text/csv',
     allowOverwrite: true,
   });

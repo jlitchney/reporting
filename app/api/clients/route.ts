@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   let blob: Awaited<ReturnType<typeof put>>;
   try {
     blob = await put(`clients/${id}/data.csv`, file, {
-      access: 'public',
+      access: 'private',
       contentType: 'text/csv',
     });
   } catch (e) {
