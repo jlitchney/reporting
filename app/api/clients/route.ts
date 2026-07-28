@@ -20,10 +20,16 @@ export async function POST(req: NextRequest) {
 
   const id = `client-${Date.now()}`;
 
-  const blob = await put(`clients/${id}/data.csv`, file, {
-    access: 'public',
-    contentType: 'text/csv',
-  });
+  let blob: Awaited<ReturnType<typeof put>>;
+  try {
+    blob = await put(`clients/${id}/data.csv`, file, {
+      access: 'public',
+      contentType: 'text/csv',
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: `Blob upload failed: ${msg}` }, { status: 500 });
+  }
 
   const client = {
     id,
@@ -33,6 +39,12 @@ export async function POST(req: NextRequest) {
     lastUpdated: new Date().toISOString(),
   };
 
-  await saveClient(client);
+  try {
+    await saveClient(client);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: `Redis save failed: ${msg}` }, { status: 500 });
+  }
+
   return NextResponse.json(sanitize(client));
 }
