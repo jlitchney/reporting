@@ -59,7 +59,7 @@ export default function Home() {
   );
 
   const handleAddClient = useCallback(
-    (name: string, file: File) => upsertClient(name, file),
+    async (name: string, file: File) => { await upsertClient(name, file); },
     [upsertClient]
   );
 
