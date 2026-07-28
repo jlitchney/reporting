@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put, del, head } from '@vercel/blob';
+import { put, del, get } from '@vercel/blob';
 import { getClient, saveClient } from '@/lib/redis';
 
 // Proxy CSV through server — blobUrl is never sent to the browser
@@ -12,10 +12,14 @@ export async function GET(
   if (!client) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   try {
-    const blob = await head(client.blobUrl, { token: process.env.BLOB_READ_WRITE_TOKEN });
-    const res = await fetch(blob.downloadUrl);
-    if (!res.ok) return NextResponse.json({ error: 'Blob fetch failed' }, { status: 502 });
-    const text = await res.text();
+    const result = await get(client.blobUrl, {
+      access: 'private',
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    });
+    if (!result || result.statusCode !== 200 || !result.stream) {
+      return NextResponse.json({ error: 'Blob not found' }, { status: 404 });
+    }
+    const text = await new Response(result.stream).text();
     return new NextResponse(text, {
       headers: { 'Content-Type': 'text/csv; charset=utf-8' },
     });
