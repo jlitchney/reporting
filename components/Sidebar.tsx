@@ -8,7 +8,7 @@ interface SidebarProps {
   clients: StoredClient[];
   activeClientId: string | null;
   onSelectClient: (id: string) => void;
-  onAddClient: (name: string, csvText: string) => void;
+  onAddClient: (name: string, file: File) => void;
   onRemoveClient: (id: string) => void;
 }
 
@@ -27,16 +27,11 @@ export default function Sidebar({
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      const name = newName.trim() || clientNameFromFilename(file.name);
-      onAddClient(name, text);
-      setAdding(false);
-      setNewName('');
-      if (fileRef.current) fileRef.current.value = '';
-    };
-    reader.readAsText(file);
+    const name = newName.trim() || clientNameFromFilename(file.name);
+    onAddClient(name, file);
+    setAdding(false);
+    setNewName('');
+    if (fileRef.current) fileRef.current.value = '';
   };
 
   return (

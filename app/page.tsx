@@ -4,7 +4,6 @@ import { useCallback, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
 import MetricCards from '@/components/MetricCards';
 import ChartPanel, { CHART_ACCENT_COLORS } from '@/components/ChartPanel';
-import FileUpload from '@/components/FileUpload';
 import { useClients } from '@/lib/useClients';
 import { clientNameFromFilename } from '@/lib/csvParser';
 import type { ChartConfig } from '@/lib/types';
@@ -28,6 +27,7 @@ function newChart(data: NonNullable<ReturnType<typeof useClients>['parsedData']>
 export default function Home() {
   const {
     hydrated,
+    csvLoading,
     clients,
     activeClient,
     activeClientId,
@@ -44,20 +44,14 @@ export default function Home() {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file || !activeClientId) return;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        upsertClient(activeClient?.name ?? clientNameFromFilename(file.name), ev.target?.result as string, activeClientId);
-        if (refreshInputRef.current) refreshInputRef.current.value = '';
-      };
-      reader.readAsText(file);
+      upsertClient(activeClient?.name ?? clientNameFromFilename(file.name), file, activeClientId);
+      if (refreshInputRef.current) refreshInputRef.current.value = '';
     },
     [activeClientId, activeClient, upsertClient]
   );
 
   const handleAddClient = useCallback(
-    (name: string, csvText: string) => {
-      upsertClient(name, csvText);
-    },
+    (name: string, file: File) => upsertClient(name, file),
     [upsertClient]
   );
 
@@ -98,7 +92,6 @@ export default function Home() {
 
   const charts = activeClient?.chartConfigs ?? [];
 
-  // Loading state
   if (!hydrated) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
@@ -118,7 +111,6 @@ export default function Home() {
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Header */}
         <header className="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-3">
           <div className="flex items-center gap-2 text-sm">
             <span className="text-slate-400">Reports</span>
@@ -149,37 +141,31 @@ export default function Home() {
           )}
         </header>
 
-        {/* Main content */}
         <main className="flex-1 overflow-y-auto">
-          {!parsedData ? (
-            /* Empty state */
+          {csvLoading ? (
+            <div className="flex h-full items-center justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-7 w-7 animate-spin rounded-full border-2 border-slate-200 border-t-[#1e3a6e]" />
+                <p className="text-sm text-slate-500">Loading data…</p>
+              </div>
+            </div>
+          ) : !parsedData ? (
             <div className="flex h-full flex-col items-center justify-center px-4 py-12">
-              <div className="w-full max-w-md space-y-4">
-                <div className="text-center">
-                  <h2 className="text-lg font-semibold text-slate-700">
-                    {clients.length === 0 ? 'Get started' : 'Select or add a client'}
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {clients.length === 0
-                      ? 'Add a client and upload their lead CSV to generate charts.'
-                      : 'Choose a client from the sidebar or add a new one.'}
-                  </p>
-                </div>
-                {clients.length === 0 && (
-                  <FileUpload
-                    onFile={(text, filename) =>
-                      upsertClient(clientNameFromFilename(filename), text)
-                    }
-                  />
-                )}
+              <div className="text-center">
+                <h2 className="text-lg font-semibold text-slate-700">
+                  {clients.length === 0 ? 'Get started' : 'Select a client'}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  {clients.length === 0
+                    ? 'Add a client using the sidebar to get started.'
+                    : 'Choose a client from the sidebar.'}
+                </p>
               </div>
             </div>
           ) : (
             <div className="space-y-5 px-6 py-6">
-              {/* Metric cards */}
               <MetricCards data={parsedData} />
 
-              {/* Charts */}
               {charts.map((chart, i) => (
                 <ChartPanel
                   key={chart.id}
@@ -192,7 +178,6 @@ export default function Home() {
                 />
               ))}
 
-              {/* Add chart */}
               <button
                 onClick={handleAddChart}
                 className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 py-4 text-sm font-medium text-slate-400 hover:border-[#1e3a6e] hover:text-[#1e3a6e] transition-colors"
