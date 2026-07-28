@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   const id = `client-${Date.now()}`;
 
   const blob = await put(`clients/${id}/data.csv`, file, {
-    access: 'public',
+    access: 'private',
     contentType: 'text/csv',
   });
 

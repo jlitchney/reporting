@@ -30,7 +30,7 @@ export function useClients() {
     }
     setCsvLoading(true);
     try {
-      const text = await fetch(client.blobUrl).then((r) => r.text());
+      const text = await fetch(`/api/clients/${client.id}/csv`).then((r) => r.text());
       const parsed = parseCSV(text, client.name);
       csvCache.current.set(client.id, parsed);
       setParsedData(parsed);
