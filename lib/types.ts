@@ -15,9 +15,15 @@ export interface ParsedLead {
   tags: Map<string, { applied: Date | null; removed: Date | null }>;
 }
 
+export interface TagGroup {
+  name: string;
+  tags: TagColumn[];
+}
+
 export interface ParsedData {
   clientName: string;
   tagColumns: TagColumn[];
+  tagGroups: TagGroup[];
   leads: ParsedLead[];
   dateRange: { min: Date; max: Date };
 }

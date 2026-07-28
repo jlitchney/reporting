@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { ParsedData, ChartConfig, ChartQuery, GroupBy } from '@/lib/types';
+import type { ParsedData, ChartConfig, ChartQuery, GroupBy, TagGroup } from '@/lib/types';
 import { processChartData, countLeadsWithFilters } from '@/lib/dataProcessor';
 import ReportBarChart from './ReportBarChart';
 
@@ -28,7 +28,7 @@ export default function ChartPanel({
   onRemove,
   canRemove,
 }: ChartPanelProps) {
-  const { tagColumns, leads, dateRange } = data;
+  const { tagGroups, leads, dateRange } = data;
   const { id, title, query } = config;
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
@@ -44,7 +44,6 @@ export default function ChartPanel({
     return countLeadsWithFilters(leads, query.metric, query.filters);
   }, [leads, query.metric, query.filters]);
 
-  const tagLabels = tagColumns.map((c) => c.label);
   const defaultDateMin = dateRange.min.toISOString().slice(0, 10);
   const defaultDateMax = dateRange.max.toISOString().slice(0, 10);
 
@@ -123,8 +122,12 @@ export default function ChartPanel({
                 className="rounded border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
               >
                 <option value="">Select a tag…</option>
-                {tagLabels.map((l) => (
-                  <option key={l} value={l}>{l}</option>
+                {tagGroups.map((g) => (
+                  <optgroup key={g.name} label={g.name}>
+                    {g.tags.map((t) => (
+                      <option key={t.label} value={t.label}>{t.tag}</option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </div>
@@ -143,11 +146,19 @@ export default function ChartPanel({
                 className="rounded border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
               >
                 <option value="">+ Add filter</option>
-                {tagLabels
-                  .filter((l) => l !== query.metric && !query.filters.includes(l))
-                  .map((l) => (
-                    <option key={l} value={l}>{l}</option>
-                  ))}
+                {tagGroups.map((g) => {
+                  const available = g.tags.filter(
+                    (t) => t.label !== query.metric && !query.filters.includes(t.label)
+                  );
+                  if (!available.length) return null;
+                  return (
+                    <optgroup key={g.name} label={g.name}>
+                      {available.map((t) => (
+                        <option key={t.label} value={t.label}>{t.tag}</option>
+                      ))}
+                    </optgroup>
+                  );
+                })}
               </select>
             </div>
 

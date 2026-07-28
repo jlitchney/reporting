@@ -14,19 +14,45 @@ export interface StoredClient {
   lastUpdated: string;
 }
 
+// One default chart per TagGroup (using the first tag as starting metric).
+// Skip large groups like "Utm Sources" — those belong in chart filters.
+const MAX_TAGS_FOR_DEFAULT_CHART = 8;
+
 function defaultCharts(data: ParsedData): ChartConfig[] {
-  return data.tagColumns.map((col, i) => ({
-    id: `chart-${Date.now()}-${i}`,
-    title: `${col.tag} over time`,
-    query: {
-      metric: col.label,
-      filters: [],
-      dateField: col.label,
-      groupBy: 'week' as const,
-      startDate: null,
-      endDate: null,
-    },
-  }));
+  const charts: ChartConfig[] = [];
+  let i = 0;
+  for (const group of data.tagGroups) {
+    if (group.tags.length > MAX_TAGS_FOR_DEFAULT_CHART) continue;
+    const col = group.tags[0];
+    charts.push({
+      id: `chart-${Date.now()}-${i++}`,
+      title: `${group.name} by week`,
+      query: {
+        metric: col.label,
+        filters: [],
+        dateField: col.label,
+        groupBy: 'week' as const,
+        startDate: null,
+        endDate: null,
+      },
+    });
+  }
+  if (charts.length === 0 && data.tagColumns.length > 0) {
+    const col = data.tagColumns[0];
+    charts.push({
+      id: `chart-${Date.now()}-0`,
+      title: `${col.tag} by week`,
+      query: {
+        metric: col.label,
+        filters: [],
+        dateField: col.label,
+        groupBy: 'week' as const,
+        startDate: null,
+        endDate: null,
+      },
+    });
+  }
+  return charts;
 }
 
 function loadFromStorage(): StoredClient[] {
