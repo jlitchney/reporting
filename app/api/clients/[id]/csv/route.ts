@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put, del, head } from '@vercel/blob';
+import { put, del } from '@vercel/blob';
 import { getClient, saveClient } from '@/lib/redis';
 
-// Proxy the private CSV through the server — never exposes the raw Blob URL to the browser
+// Proxy CSV through server — blobUrl is never sent to the browser
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -11,8 +11,8 @@ export async function GET(
   const client = await getClient(id);
   if (!client) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const blob = await head(client.blobUrl, { token: process.env.BLOB_READ_WRITE_TOKEN });
-  const res = await fetch(blob.downloadUrl);
+  const res = await fetch(client.blobUrl);
+  if (!res.ok) return NextResponse.json({ error: 'Blob fetch failed' }, { status: 502 });
   const text = await res.text();
 
   return new NextResponse(text, {
@@ -36,12 +36,14 @@ export async function PUT(
   }
 
   const blob = await put(`clients/${id}/data.csv`, file, {
-    access: 'private',
+    access: 'public',
     contentType: 'text/csv',
     allowOverwrite: true,
   });
 
   const updated = { ...existing, blobUrl: blob.url, lastUpdated: new Date().toISOString() };
   await saveClient(updated);
-  return NextResponse.json(updated);
+  const { blobUrl: _url, ...sanitized } = updated;
+  void _url;
+  return NextResponse.json(sanitized);
 }

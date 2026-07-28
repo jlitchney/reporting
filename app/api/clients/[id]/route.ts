@@ -11,9 +11,14 @@ export async function PATCH(
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const body = await req.json();
-  const updated = { ...existing, ...body, lastUpdated: new Date().toISOString() };
+  // Prevent overwriting blobUrl from the client side
+  const { blobUrl: _b, ...safeBody } = body;
+  void _b;
+  const updated = { ...existing, ...safeBody, lastUpdated: new Date().toISOString() };
   await saveClient(updated);
-  return NextResponse.json(updated);
+  const { blobUrl: _url, ...sanitized } = updated;
+  void _url;
+  return NextResponse.json(sanitized);
 }
 
 export async function DELETE(

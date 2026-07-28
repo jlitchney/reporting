@@ -2,9 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
 import { listClients, saveClient } from '@/lib/redis';
 
+function sanitize<T extends { blobUrl?: unknown }>(client: T) {
+  const { blobUrl: _b, ...rest } = client;
+  void _b;
+  return rest;
+}
+
 export async function GET() {
   const clients = await listClients();
-  return NextResponse.json(clients);
+  return NextResponse.json(clients.map(sanitize));
 }
 
 export async function POST(req: NextRequest) {
@@ -15,7 +21,7 @@ export async function POST(req: NextRequest) {
   const id = `client-${Date.now()}`;
 
   const blob = await put(`clients/${id}/data.csv`, file, {
-    access: 'private',
+    access: 'public',
     contentType: 'text/csv',
   });
 
@@ -28,5 +34,5 @@ export async function POST(req: NextRequest) {
   };
 
   await saveClient(client);
-  return NextResponse.json(client);
+  return NextResponse.json(sanitize(client));
 }

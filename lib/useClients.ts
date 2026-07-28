@@ -46,7 +46,9 @@ export function useClients() {
     }
     setCsvLoading(true);
     try {
-      const text = await fetch(`/api/clients/${client.id}/csv`).then((r) => r.text());
+      const res = await fetch(`/api/clients/${client.id}/csv`);
+      if (!res.ok) throw new Error(`CSV load failed: ${res.status}`);
+      const text = await res.text();
       const parsed = parseCSV(text, client.name);
       csvCache.current.set(client.id, parsed);
       setParsedData(parsed);
