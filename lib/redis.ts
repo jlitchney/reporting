@@ -1,11 +1,12 @@
 import { Redis } from '@upstash/redis';
-import type { ChartConfig } from './types';
+import type { ChartConfig, ClientTab } from './types';
 
 export interface ClientRecord {
   id: string;
   name: string;
   blobUrl: string;
-  chartConfigs: ChartConfig[];
+  tabs?: ClientTab[];
+  chartConfigs?: ChartConfig[]; // legacy
   lastUpdated: string;
 }
 

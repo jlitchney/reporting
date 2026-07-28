@@ -9,6 +9,7 @@ interface SidebarProps {
   activeClientId: string | null;
   onSelectClient: (id: string) => void;
   onAddClient: (name: string, file: File) => void;
+  onRenameClient: (id: string, name: string) => void;
   onRemoveClient: (id: string) => void;
 }
 
@@ -17,11 +18,14 @@ export default function Sidebar({
   activeClientId,
   onSelectClient,
   onAddClient,
+  onRenameClient,
   onRemoveClient,
 }: SidebarProps) {
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [hoverId, setHoverId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,6 +36,16 @@ export default function Sidebar({
     setAdding(false);
     setNewName('');
     if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const startRename = (client: StoredClient) => {
+    setRenamingId(client.id);
+    setRenameValue(client.name);
+  };
+
+  const commitRename = (id: string) => {
+    if (renameValue.trim()) onRenameClient(id, renameValue.trim());
+    setRenamingId(null);
   };
 
   return (
@@ -58,31 +72,61 @@ export default function Sidebar({
               onMouseEnter={() => setHoverId(client.id)}
               onMouseLeave={() => setHoverId(null)}
             >
-              <button
-                onClick={() => onSelectClient(client.id)}
-                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                  activeClientId === client.id
-                    ? 'bg-white/20 font-semibold text-white'
-                    : 'text-white/70 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                <span
-                  className={`h-2 w-2 flex-shrink-0 rounded-full ${
-                    activeClientId === client.id ? 'bg-blue-300' : 'bg-white/30'
-                  }`}
-                />
-                <span className="truncate">{client.name}</span>
-              </button>
-              {hoverId === client.id && clients.length > 1 && (
+              {renamingId === client.id ? (
+                <div className="flex items-center gap-2 rounded-lg px-3 py-2 bg-white/20">
+                  <span className="h-2 w-2 flex-shrink-0 rounded-full bg-blue-300" />
+                  <input
+                    autoFocus
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onBlur={() => commitRename(client.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') commitRename(client.id);
+                      if (e.key === 'Escape') setRenamingId(null);
+                    }}
+                    className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder-white/40 border-b border-white/40"
+                  />
+                </div>
+              ) : (
                 <button
-                  onClick={() => onRemoveClient(client.id)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-white/30 hover:text-white/80 transition-colors"
-                  title="Remove client"
+                  onClick={() => onSelectClient(client.id)}
+                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                    activeClientId === client.id
+                      ? 'bg-white/20 font-semibold text-white'
+                      : 'text-white/70 hover:bg-white/10 hover:text-white'
+                  }`}
                 >
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <span
+                    className={`h-2 w-2 flex-shrink-0 rounded-full ${
+                      activeClientId === client.id ? 'bg-blue-300' : 'bg-white/30'
+                    }`}
+                  />
+                  <span className="truncate flex-1">{client.name}</span>
                 </button>
+              )}
+
+              {/* Hover actions: rename + delete */}
+              {hoverId === client.id && renamingId !== client.id && (
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                  <button
+                    onClick={() => startRename(client)}
+                    title="Rename client"
+                    className="rounded p-0.5 text-white/30 hover:text-white/80 transition-colors"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => onRemoveClient(client.id)}
+                    title="Remove client"
+                    className="rounded p-0.5 text-white/30 hover:text-white/80 transition-colors"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               )}
             </div>
           ))}

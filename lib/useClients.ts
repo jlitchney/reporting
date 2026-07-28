@@ -2,24 +2,40 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { parseCSV } from './csvParser';
-import type { ParsedData, ChartConfig } from './types';
+import type { ParsedData, ChartConfig, ClientTab } from './types';
 
 export interface StoredClient {
   id: string;
   name: string;
   blobUrl: string;
-  chartConfigs: ChartConfig[];
+  tabs: ClientTab[];
   lastUpdated: string;
+}
+
+function migrateClient(raw: Record<string, unknown>): StoredClient {
+  if (raw.tabs) return raw as unknown as StoredClient;
+  return {
+    ...(raw as unknown as StoredClient),
+    tabs: [{ id: 'tab-default', name: 'Overview', chartConfigs: (raw.chartConfigs as ChartConfig[]) ?? [] }],
+  };
+}
+
+function patchClient(clientId: string, body: Record<string, unknown>) {
+  fetch(`/api/clients/${clientId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).catch(() => {});
 }
 
 export function useClients() {
   const [clients, setClients] = useState<StoredClient[]>([]);
   const [activeClientId, setActiveClientId] = useState<string | null>(null);
+  const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [parsedData, setParsedData] = useState<ParsedData | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [csvLoading, setCsvLoading] = useState(false);
 
-  // In-memory CSV cache so switching clients is instant after first load
   const csvCache = useRef(new Map<string, ParsedData>());
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -39,15 +55,16 @@ export function useClients() {
     }
   }, []);
 
-  // Load client list on mount
   useEffect(() => {
     fetch('/api/clients')
       .then((r) => r.json())
-      .then(async (list: StoredClient[]) => {
-        setClients(list);
-        if (list.length > 0) {
-          setActiveClientId(list[0].id);
-          await loadCSV(list[0]);
+      .then(async (list: Record<string, unknown>[]) => {
+        const migrated = list.map(migrateClient);
+        setClients(migrated);
+        if (migrated.length > 0) {
+          setActiveClientId(migrated[0].id);
+          setActiveTabId(migrated[0].tabs[0]?.id ?? null);
+          await loadCSV(migrated[0]);
         }
       })
       .catch(() => {})
@@ -62,23 +79,20 @@ export function useClients() {
 
       let client: StoredClient;
       if (existingId) {
-        const res = await fetch(`/api/clients/${existingId}/csv`, {
-          method: 'PUT',
-          body: formData,
-        });
+        const res = await fetch(`/api/clients/${existingId}/csv`, { method: 'PUT', body: formData });
         if (!res.ok) throw new Error(`Upload failed: ${res.status} ${await res.text()}`);
-        client = await res.json();
+        client = migrateClient(await res.json());
         setClients((prev) => prev.map((c) => (c.id === existingId ? client : c)));
       } else {
         const res = await fetch('/api/clients', { method: 'POST', body: formData });
         if (!res.ok) throw new Error(`Upload failed: ${res.status} ${await res.text()}`);
-        client = await res.json();
+        client = migrateClient(await res.json());
         setClients((prev) => [...prev, client]);
       }
 
-      // Invalidate cache so fresh data is fetched
       csvCache.current.delete(client.id);
       setActiveClientId(client.id);
+      setActiveTabId(client.tabs[0]?.id ?? null);
       await loadCSV(client);
       return client.id;
     },
@@ -90,23 +104,66 @@ export function useClients() {
       const client = allClients.find((c) => c.id === id);
       if (!client) return;
       setActiveClientId(id);
+      setActiveTabId(client.tabs[0]?.id ?? null);
       loadCSV(client);
     },
     [loadCSV]
   );
 
-  const updateCharts = useCallback((clientId: string, chartConfigs: ChartConfig[]) => {
+  const renameClient = useCallback((id: string, name: string) => {
+    setClients((prev) => prev.map((c) => (c.id === id ? { ...c, name } : c)));
+    patchClient(id, { name });
+  }, []);
+
+  const updateTabCharts = useCallback((clientId: string, tabId: string, chartConfigs: ChartConfig[]) => {
+    let savedTabs: ClientTab[] = [];
     setClients((prev) =>
-      prev.map((c) => (c.id === clientId ? { ...c, chartConfigs } : c))
+      prev.map((c) => {
+        if (c.id !== clientId) return c;
+        savedTabs = c.tabs.map((t) => (t.id === tabId ? { ...t, chartConfigs } : t));
+        return { ...c, tabs: savedTabs };
+      })
     );
     clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      fetch(`/api/clients/${clientId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chartConfigs }),
-      }).catch(() => {});
-    }, 800);
+    saveTimer.current = setTimeout(() => patchClient(clientId, { tabs: savedTabs }), 800);
+  }, []);
+
+  const addTab = useCallback((clientId: string) => {
+    const newTab: ClientTab = { id: `tab-${Date.now()}`, name: 'New Tab', chartConfigs: [] };
+    let savedTabs: ClientTab[] = [];
+    setClients((prev) =>
+      prev.map((c) => {
+        if (c.id !== clientId) return c;
+        savedTabs = [...c.tabs, newTab];
+        return { ...c, tabs: savedTabs };
+      })
+    );
+    setActiveTabId(newTab.id);
+    setTimeout(() => patchClient(clientId, { tabs: savedTabs }), 0);
+  }, []);
+
+  const removeTab = useCallback((clientId: string, tabId: string, currentTabs: ClientTab[]) => {
+    const tabIndex = currentTabs.findIndex((t) => t.id === tabId);
+    const newTabs = currentTabs.filter((t) => t.id !== tabId);
+    setClients((prev) => prev.map((c) => (c.id !== clientId ? c : { ...c, tabs: newTabs })));
+    setActiveTabId((cur) => {
+      if (cur !== tabId) return cur;
+      return (newTabs[Math.max(0, tabIndex - 1)] ?? newTabs[0])?.id ?? null;
+    });
+    patchClient(clientId, { tabs: newTabs });
+  }, []);
+
+  const renameTab = useCallback((clientId: string, tabId: string, name: string) => {
+    let savedTabs: ClientTab[] = [];
+    setClients((prev) =>
+      prev.map((c) => {
+        if (c.id !== clientId) return c;
+        savedTabs = c.tabs.map((t) => (t.id === tabId ? { ...t, name } : t));
+        return { ...c, tabs: savedTabs };
+      })
+    );
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => patchClient(clientId, { tabs: savedTabs }), 800);
   }, []);
 
   const removeClient = useCallback(
@@ -118,9 +175,11 @@ export function useClients() {
       if (activeClientId === id) {
         if (next.length > 0) {
           setActiveClientId(next[0].id);
+          setActiveTabId(next[0].tabs[0]?.id ?? null);
           loadCSV(next[0]);
         } else {
           setActiveClientId(null);
+          setActiveTabId(null);
           setParsedData(null);
         }
       }
@@ -128,7 +187,12 @@ export function useClients() {
     [activeClientId, loadCSV]
   );
 
+  const selectTab = useCallback((tabId: string) => {
+    setActiveTabId(tabId);
+  }, []);
+
   const activeClient = clients.find((c) => c.id === activeClientId) ?? null;
+  const activeTab = activeClient?.tabs.find((t) => t.id === activeTabId) ?? activeClient?.tabs[0] ?? null;
 
   return {
     hydrated,
@@ -136,10 +200,17 @@ export function useClients() {
     clients,
     activeClient,
     activeClientId,
+    activeTab,
+    activeTabId,
     parsedData,
     upsertClient,
     selectClient,
-    updateCharts,
+    selectTab,
+    renameClient,
+    updateTabCharts,
+    addTab,
+    removeTab,
+    renameTab,
     removeClient,
   };
 }

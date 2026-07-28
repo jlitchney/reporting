@@ -50,3 +50,9 @@ export interface ChartConfig {
   title: string;
   query: ChartQuery;
 }
+
+export interface ClientTab {
+  id: string;
+  name: string;
+  chartConfigs: ChartConfig[];
+}

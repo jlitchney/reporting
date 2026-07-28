@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     id,
     name,
     blobUrl: blob.url,
-    chartConfigs: [],
+    tabs: [{ id: 'tab-default', name: 'Overview', chartConfigs: [] }],
     lastUpdated: new Date().toISOString(),
   };
 

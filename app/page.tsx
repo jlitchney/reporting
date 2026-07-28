@@ -4,6 +4,7 @@ import { useCallback, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
 import MetricCards from '@/components/MetricCards';
 import ChartPanel, { CHART_ACCENT_COLORS } from '@/components/ChartPanel';
+import TabBar from '@/components/TabBar';
 import { useClients } from '@/lib/useClients';
 import { clientNameFromFilename } from '@/lib/csvParser';
 import type { ChartConfig } from '@/lib/types';
@@ -31,10 +32,17 @@ export default function Home() {
     clients,
     activeClient,
     activeClientId,
+    activeTab,
+    activeTabId,
     parsedData,
     upsertClient,
     selectClient,
-    updateCharts,
+    selectTab,
+    renameClient,
+    updateTabCharts,
+    addTab,
+    removeTab,
+    renameTab,
     removeClient,
   } = useClients();
 
@@ -65,32 +73,58 @@ export default function Home() {
     [removeClient, clients]
   );
 
+  const handleRenameClient = useCallback(
+    (id: string, name: string) => renameClient(id, name),
+    [renameClient]
+  );
+
   const handleUpdateChart = useCallback(
     (chartId: string, updates: Partial<ChartConfig>) => {
-      if (!activeClientId || !activeClient) return;
-      const updated = activeClient.chartConfigs.map((c) =>
+      if (!activeClientId || !activeTab) return;
+      const updated = activeTab.chartConfigs.map((c) =>
         c.id === chartId ? { ...c, ...updates } : c
       );
-      updateCharts(activeClientId, updated);
+      updateTabCharts(activeClientId, activeTab.id, updated);
     },
-    [activeClientId, activeClient, updateCharts]
+    [activeClientId, activeTab, updateTabCharts]
   );
 
   const handleRemoveChart = useCallback(
     (chartId: string) => {
-      if (!activeClientId || !activeClient) return;
-      updateCharts(activeClientId, activeClient.chartConfigs.filter((c) => c.id !== chartId));
+      if (!activeClientId || !activeTab) return;
+      updateTabCharts(activeClientId, activeTab.id, activeTab.chartConfigs.filter((c) => c.id !== chartId));
     },
-    [activeClientId, activeClient, updateCharts]
+    [activeClientId, activeTab, updateTabCharts]
   );
 
   const handleAddChart = useCallback(() => {
-    if (!activeClientId || !activeClient || !parsedData) return;
-    const next = [...activeClient.chartConfigs, newChart(parsedData, activeClient.chartConfigs.length)];
-    updateCharts(activeClientId, next);
-  }, [activeClientId, activeClient, parsedData, updateCharts]);
+    if (!activeClientId || !activeTab || !parsedData) return;
+    const next = [...activeTab.chartConfigs, newChart(parsedData, activeTab.chartConfigs.length)];
+    updateTabCharts(activeClientId, activeTab.id, next);
+  }, [activeClientId, activeTab, parsedData, updateTabCharts]);
 
-  const charts = activeClient?.chartConfigs ?? [];
+  const handleAddTab = useCallback(() => {
+    if (!activeClientId) return;
+    addTab(activeClientId);
+  }, [activeClientId, addTab]);
+
+  const handleRemoveTab = useCallback(
+    (tabId: string) => {
+      if (!activeClientId || !activeClient) return;
+      removeTab(activeClientId, tabId, activeClient.tabs);
+    },
+    [activeClientId, activeClient, removeTab]
+  );
+
+  const handleRenameTab = useCallback(
+    (tabId: string, name: string) => {
+      if (!activeClientId) return;
+      renameTab(activeClientId, tabId, name);
+    },
+    [activeClientId, renameTab]
+  );
+
+  const charts = activeTab?.chartConfigs ?? [];
 
   if (!hydrated) {
     return (
@@ -107,6 +141,7 @@ export default function Home() {
         activeClientId={activeClientId}
         onSelectClient={handleSelectClient}
         onAddClient={handleAddClient}
+        onRenameClient={handleRenameClient}
         onRemoveClient={handleRemoveClient}
       />
 
@@ -140,6 +175,17 @@ export default function Home() {
             </div>
           )}
         </header>
+
+        {activeClient && (
+          <TabBar
+            tabs={activeClient.tabs}
+            activeTabId={activeTabId}
+            onSelectTab={selectTab}
+            onAddTab={handleAddTab}
+            onRemoveTab={handleRemoveTab}
+            onRenameTab={handleRenameTab}
+          />
+        )}
 
         <main className="flex-1 overflow-y-auto">
           {csvLoading ? (
