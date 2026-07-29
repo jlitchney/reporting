@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put, del, get } from '@vercel/blob';
+import { del, get } from '@vercel/blob';
 import { getClient, saveClient } from '@/lib/redis';
 
 // Proxy CSV through server — blobUrl is never sent to the browser
@@ -37,20 +37,13 @@ export async function PUT(
   const existing = await getClient(id);
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const formData = await req.formData();
-  const file = formData.get('csv') as File;
+  const { blobUrl: newBlobUrl } = await req.json();
 
   if (existing.blobUrl) {
     await del(existing.blobUrl).catch(() => {});
   }
 
-  const blob = await put(`clients/${id}/data.csv`, file, {
-    access: 'private',
-    contentType: 'text/csv',
-    allowOverwrite: true,
-  });
-
-  const updated = { ...existing, blobUrl: blob.url, lastUpdated: new Date().toISOString() };
+  const updated = { ...existing, blobUrl: newBlobUrl, lastUpdated: new Date().toISOString() };
   await saveClient(updated);
   const { blobUrl: _url, ...sanitized } = updated;
   void _url;

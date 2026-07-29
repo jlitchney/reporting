@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { upload } from '@vercel/blob/client';
 import { parseCSV } from './csvParser';
 import type { ParsedData, ChartConfig, ClientTab } from './types';
 
@@ -75,18 +76,27 @@ export function useClients() {
 
   const upsertClient = useCallback(
     async (name: string, file: File, existingId?: string) => {
-      const formData = new FormData();
-      formData.append('name', name);
-      formData.append('csv', file);
+      const blob = await upload(`clients/${existingId ?? `new-${Date.now()}`}/${file.name}`, file, {
+        access: 'private',
+        handleUploadUrl: '/api/upload-token',
+      });
 
       let client: StoredClient;
       if (existingId) {
-        const res = await fetch(`/api/clients/${existingId}/csv`, { method: 'PUT', body: formData });
+        const res = await fetch(`/api/clients/${existingId}/csv`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ blobUrl: blob.url }),
+        });
         if (!res.ok) throw new Error(`Upload failed: ${res.status} ${await res.text()}`);
         client = migrateClient(await res.json());
         setClients((prev) => prev.map((c) => (c.id === existingId ? client : c)));
       } else {
-        const res = await fetch('/api/clients', { method: 'POST', body: formData });
+        const res = await fetch('/api/clients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, blobUrl: blob.url }),
+        });
         if (!res.ok) throw new Error(`Upload failed: ${res.status} ${await res.text()}`);
         client = migrateClient(await res.json());
         setClients((prev) => [...prev, client]);

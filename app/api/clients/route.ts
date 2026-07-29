@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
 import { listClients, saveClient } from '@/lib/redis';
 
 function sanitize<T extends { blobUrl?: unknown }>(client: T) {
@@ -14,27 +13,13 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const formData = await req.formData();
-  const name = formData.get('name') as string;
-  const file = formData.get('csv') as File;
+  const { name, blobUrl } = await req.json();
 
   const id = `client-${Date.now()}`;
-
-  let blob: Awaited<ReturnType<typeof put>>;
-  try {
-    blob = await put(`clients/${id}/data.csv`, file, {
-      access: 'private',
-      contentType: 'text/csv',
-    });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: `Blob upload failed: ${msg}` }, { status: 500 });
-  }
-
   const client = {
     id,
     name,
-    blobUrl: blob.url,
+    blobUrl,
     tabs: [{ id: 'tab-default', name: 'Overview', chartConfigs: [] }],
     lastUpdated: new Date().toISOString(),
   };
