@@ -112,7 +112,7 @@ export default function WidgetShell({
           )}
           {canRemove && !readOnly && (
             <button
-              onClick={onRemove}
+              onClick={() => { if (window.confirm('Remove this chart?')) onRemove(); }}
               title="Remove chart"
               className="rounded p-1 text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-colors"
             >
