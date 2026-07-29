@@ -95,7 +95,7 @@ export default function CostBarWidget({
       tagGroups,
       sourceGroup,
       metricDefs,
-      { datePreset: query.datePreset, startDate: query.startDate, endDate: query.endDate, excludeRemoved: query.excludeRemoved },
+      { datePreset: query.datePreset, startDate: query.startDate, endDate: query.endDate, excludeRemoved: query.excludeRemoved, dateField: query.dateField },
     );
     return rows
       .map((row) => {
@@ -185,6 +185,25 @@ export default function CostBarWidget({
           className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-[#1e3a6e]"
         >
           {tagGroups.map((g) => <option key={g.name} value={g.name}>{g.name}</option>)}
+        </select>
+      </div>
+
+      {/* Date by */}
+      <div>
+        <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Date by</label>
+        <select
+          value={query.dateField ?? 'created'}
+          onChange={(e) => updateQuery({ dateField: e.target.value })}
+          className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-[#1e3a6e]"
+        >
+          <option value="created">Creation date</option>
+          {tagGroups.map((g) => (
+            <optgroup key={g.name} label={g.name}>
+              {g.tags.map((t) => (
+                <option key={t.label} value={t.label}>{t.tag} — Applied date</option>
+              ))}
+            </optgroup>
+          ))}
         </select>
       </div>
 

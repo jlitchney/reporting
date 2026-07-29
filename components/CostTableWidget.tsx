@@ -67,8 +67,8 @@ export default function CostTableWidget({
     tagGroups,
     sourceGroup,
     metricDefs,
-    { datePreset: config.query.datePreset, startDate: config.query.startDate, endDate: config.query.endDate, excludeRemoved }
-  ), [data.leads, spendData, tagGroups, sourceGroup, metricDefs, config.query.datePreset, config.query.startDate, config.query.endDate, excludeRemoved]);
+    { datePreset: config.query.datePreset, startDate: config.query.startDate, endDate: config.query.endDate, excludeRemoved, dateField: config.query.dateField }
+  ), [data.leads, spendData, tagGroups, sourceGroup, metricDefs, config.query.datePreset, config.query.startDate, config.query.endDate, excludeRemoved, config.query.dateField]);
 
   const sourceAggregates = useMemo(() => {
     const map = new Map<string, { name: string; spend: number; counts: Record<string, number> }>();
@@ -160,6 +160,25 @@ export default function CostTableWidget({
           className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-[#1e3a6e]"
         >
           {tagGroups.map((g) => <option key={g.name} value={g.name}>{g.name}</option>)}
+        </select>
+      </div>
+
+      {/* Date by */}
+      <div>
+        <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Date by</label>
+        <select
+          value={config.query.dateField ?? 'created'}
+          onChange={(e) => onUpdate(config.id, { query: { ...config.query, dateField: e.target.value } })}
+          className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-[#1e3a6e]"
+        >
+          <option value="created">Creation date</option>
+          {tagGroups.map((g) => (
+            <optgroup key={g.name} label={g.name}>
+              {g.tags.map((t) => (
+                <option key={t.label} value={t.label}>{t.tag} — Applied date</option>
+              ))}
+            </optgroup>
+          ))}
         </select>
       </div>
 
