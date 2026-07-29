@@ -21,6 +21,7 @@ const TYPE_META: { type: WidgetType; label: string; description: string; icon: R
   { type: 'pie', label: 'Pie Chart', description: 'Distribution breakdown', icon: <PieIcon /> },
   { type: 'table', label: 'Table', description: 'Ranked tag group data', icon: <TableIcon /> },
   { type: 'funnel', label: 'Candidate Funnel', description: 'Stage-by-stage conversion', icon: <FunnelIcon /> },
+  { type: 'cost', label: 'Cost Table', description: 'Spend + cost/app by source', icon: <CostIcon /> },
 ];
 
 const TYPE_STEP_LABEL: Record<WidgetType, string> = {
@@ -32,6 +33,7 @@ const TYPE_STEP_LABEL: Record<WidgetType, string> = {
   pie: 'Add Pie Chart',
   table: 'Add Table',
   funnel: 'Add Candidate Funnel',
+  cost: 'Add Cost Table',
 };
 
 // tag-group-based types (no metric, uses tagGroupAxis)
@@ -50,6 +52,7 @@ function autoTitle(type: WidgetType, metric: string | null, data: ParsedData, ta
   if (type === 'stacked_bar') return tagGroupAxis ? `${tagGroupAxis} over time` : 'Stacked Bar Chart';
   if (type === 'table') return tagGroupAxis ? `${tagGroupAxis} Table` : 'Table';
   if (type === 'funnel') return 'Candidate Funnel';
+  if (type === 'cost') return 'Cost by Source';
   // bar
   if (tagGroupAxis) return tagName ? `${tagName} by ${tagGroupAxis}` : `Candidates by ${tagGroupAxis}`;
   return tagName ? `${tagName} over time` : 'New Chart';
@@ -372,4 +375,7 @@ function TableIcon() {
 }
 function FunnelIcon() {
   return <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" /></svg>;
+}
+function CostIcon() {
+  return <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 }

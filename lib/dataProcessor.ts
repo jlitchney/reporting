@@ -13,6 +13,7 @@ import {
   subDays,
 } from 'date-fns';
 import type { ParsedLead, ChartDataPoint, ChartQuery, GroupBy, DatePreset, CriteriaFilter, FilterCondition, TagGroup } from './types';
+import type { SpendEntry } from './redis';
 
 function testCondition(lead: ParsedLead, cond: FilterCondition): boolean {
   if (!cond.tag) return true;
@@ -355,4 +356,179 @@ export function countLeadsWithFilters(leads: ParsedLead[], metric: string, filte
     if (!lead.tags.get(metric)?.applied) return false;
     return filters.every((f) => f === metric || lead.tags.get(f)?.applied != null);
   }).length;
+}
+
+export interface CostSourceRow {
+  tagLabel: string;
+  name: string;
+  applications: number;
+  candidates: number;
+  spend: number;
+  costPerApp: number | null;
+  costPerCandidate: number | null;
+}
+
+export interface CostMetricRow {
+  weekOf: Date;
+  weekLabel: string;
+  sources: CostSourceRow[];
+  organic: { applications: number; candidates: number };
+  totals: {
+    applications: number;
+    candidates: number;
+    spend: number;
+    costPerApp: number | null;
+    costPerCandidate: number | null;
+  };
+}
+
+function resolvePreset(preset?: DatePreset): Date | null {
+  const now = new Date();
+  switch (preset) {
+    case 'all_time': return null;
+    case 'this_year': return startOfYear(now);
+    case 'this_month': return startOfMonth(now);
+    case 'last_30_days': return subDays(now, 30);
+    case 'last_90_days': return subDays(now, 90);
+    default: return null;
+  }
+}
+
+export function computeCostMetrics(
+  leads: ParsedLead[],
+  spendData: SpendEntry[],
+  tagGroups: TagGroup[],
+  sourceGroupName: string,
+  appTagLabel: string,
+  query: Pick<ChartQuery, 'datePreset' | 'startDate' | 'endDate' | 'excludeRemoved'>
+): CostMetricRow[] {
+  const sourceGroup = tagGroups.find((g) => g.name === sourceGroupName);
+  if (!sourceGroup) return [];
+
+  const effectiveStart = query.datePreset && query.datePreset !== 'custom'
+    ? resolvePreset(query.datePreset)
+    : (query.startDate ?? null);
+  const effectiveEnd = query.datePreset === 'custom' ? (query.endDate ?? null) : null;
+
+  const filteredLeads = leads.filter((lead) => {
+    const appEntry = appTagLabel ? lead.tags.get(appTagLabel) : null;
+    const refDate = appEntry?.applied ?? lead.createdDate;
+    if (!refDate) return false;
+    if (effectiveStart && isBefore(refDate, effectiveStart)) return false;
+    if (effectiveEnd && isAfter(refDate, effectiveEnd)) return false;
+    return true;
+  });
+
+  if (filteredLeads.length === 0) return [];
+
+  const appDates: Date[] = [];
+  for (const lead of filteredLeads) {
+    const appEntry = appTagLabel ? lead.tags.get(appTagLabel) : null;
+    const d = appEntry?.applied ?? lead.createdDate;
+    if (d) appDates.push(d);
+  }
+
+  if (appDates.length === 0) return [];
+
+  const minDate = appDates.reduce((a, b) => (isBefore(a, b) ? a : b));
+  const maxDate = appDates.reduce((a, b) => (isAfter(a, b) ? a : b));
+
+  const weekStart = startOfWeek(minDate, { weekStartsOn: 1 });
+  const weekEnd = startOfWeek(maxDate, { weekStartsOn: 1 });
+
+  const weeks: Date[] = [];
+  let cur = weekStart;
+  while (!isAfter(cur, weekEnd)) {
+    weeks.push(cur);
+    cur = addWeeks(cur, 1);
+  }
+
+  const rows: CostMetricRow[] = [];
+
+  for (const week of weeks) {
+    const weekMs = week.getTime();
+    const nextWeek = addWeeks(week, 1);
+
+    const inWeek = (d: Date) => d.getTime() >= weekMs && d.getTime() < nextWeek.getTime();
+
+    const weekApps = filteredLeads.filter((lead) => {
+      if (!appTagLabel) return false;
+      const appEntry = lead.tags.get(appTagLabel);
+      if (!appEntry?.applied) return false;
+      if (query.excludeRemoved && appEntry.removed != null) return false;
+      return inWeek(appEntry.applied);
+    });
+
+    const weekCandidates = filteredLeads.filter((lead) => {
+      const d = lead.createdDate;
+      if (!d) return false;
+      return inWeek(d);
+    });
+
+    if (weekApps.length === 0 && weekCandidates.length === 0) continue;
+
+    const weekOfStr = format(week, 'yyyy-MM-dd');
+
+    const sources: CostSourceRow[] = sourceGroup.tags.map((tag) => {
+      const appCount = weekApps.filter((lead) => {
+        for (const t of sourceGroup.tags) {
+          const e = lead.tags.get(t.label);
+          if (e?.applied) return t.label === tag.label;
+        }
+        return false;
+      }).length;
+
+      const candidateCount = weekCandidates.filter((lead) => {
+        for (const t of sourceGroup.tags) {
+          const e = lead.tags.get(t.label);
+          if (e?.applied) return t.label === tag.label;
+        }
+        return false;
+      }).length;
+
+      const spend = spendData.find((e) => e.source === tag.label && e.weekOf === weekOfStr)?.amount ?? 0;
+      const costPerApp = spend > 0 && appCount > 0 ? spend / appCount : null;
+      const costPerCandidate = spend > 0 && candidateCount > 0 ? spend / candidateCount : null;
+
+      return {
+        tagLabel: tag.label,
+        name: tag.tag,
+        applications: appCount,
+        candidates: candidateCount,
+        spend,
+        costPerApp,
+        costPerCandidate,
+      };
+    });
+
+    const organicApps = weekApps.filter((lead) => {
+      return !sourceGroup.tags.some((t) => lead.tags.get(t.label)?.applied);
+    }).length;
+
+    const organicCandidates = weekCandidates.filter((lead) => {
+      return !sourceGroup.tags.some((t) => lead.tags.get(t.label)?.applied);
+    }).length;
+
+    const totalApps = sources.reduce((s, r) => s + r.applications, 0) + organicApps;
+    const totalCandidates = sources.reduce((s, r) => s + r.candidates, 0) + organicCandidates;
+    const totalSpend = sources.reduce((s, r) => s + r.spend, 0);
+    const totalCostPerApp = totalSpend > 0 && totalApps > 0 ? totalSpend / totalApps : null;
+    const totalCostPerCandidate = totalSpend > 0 && totalCandidates > 0 ? totalSpend / totalCandidates : null;
+
+    rows.push({
+      weekOf: week,
+      weekLabel: format(week, 'M/d/yy'),
+      sources,
+      organic: { applications: organicApps, candidates: organicCandidates },
+      totals: {
+        applications: totalApps,
+        candidates: totalCandidates,
+        spend: totalSpend,
+        costPerApp: totalCostPerApp,
+        costPerCandidate: totalCostPerCandidate,
+      },
+    });
+  }
+
+  return rows.sort((a, b) => a.weekOf.getTime() - b.weekOf.getTime());
 }

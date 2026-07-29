@@ -12,6 +12,8 @@ import ColumnChartWidget from '@/components/ColumnChartWidget';
 import StackedBarWidget from '@/components/StackedBarWidget';
 import TableWidget from '@/components/TableWidget';
 import FunnelWidget from '@/components/FunnelWidget';
+import SpendManager from '@/components/SpendManager';
+import CostTableWidget from '@/components/CostTableWidget';
 import { useClients } from '@/lib/useClients';
 import { clientNameFromFilename } from '@/lib/csvParser';
 import type { ChartConfig } from '@/lib/types';
@@ -35,6 +37,7 @@ export default function Home() {
     removeTab,
     renameTab,
     removeClient,
+    updateSpend,
   } = useClients();
 
   const refreshInputRef = useRef<HTMLInputElement>(null);
@@ -135,6 +138,7 @@ export default function Home() {
   );
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showSpendManager, setShowSpendManager] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
@@ -216,6 +220,15 @@ export default function Home() {
                   Updated {new Date(activeClient.lastUpdated).toLocaleDateString()}
                 </span>
               )}
+              <button
+                onClick={() => setShowSpendManager(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Manage Spend
+              </button>
               <label className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#1e3a6e] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#16305e] transition-colors">
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -302,6 +315,7 @@ export default function Home() {
                       case 'stacked_bar': widget = <StackedBarWidget {...commonProps} />; break;
                       case 'table':       widget = <TableWidget {...commonProps} />; break;
                       case 'funnel':      widget = <FunnelWidget {...commonProps} />; break;
+                      case 'cost':        widget = <CostTableWidget {...commonProps} spendData={activeClient?.spendData ?? []} />; break;
                       default:            widget = <ChartPanel {...commonProps} />;
                     }
                     const span = w.colSpan ?? 4;
@@ -343,6 +357,16 @@ export default function Home() {
           data={parsedData}
           onAdd={handleAddFromModal}
           onClose={() => setShowAddModal(false)}
+        />
+      )}
+
+      {showSpendManager && parsedData && activeClientId && (
+        <SpendManager
+          parsedData={parsedData}
+          tagGroups={parsedData.tagGroups}
+          spendData={activeClient?.spendData ?? []}
+          onSave={(data) => updateSpend(activeClientId, data)}
+          onClose={() => setShowSpendManager(false)}
         />
       )}
     </div>

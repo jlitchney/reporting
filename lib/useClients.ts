@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { upload } from '@vercel/blob/client';
 import { parseCSV } from './csvParser';
 import type { ParsedData, ChartConfig, ClientTab } from './types';
+import type { SpendEntry } from './redis';
+
+export type { SpendEntry };
 
 export interface StoredClient {
   id: string;
@@ -11,6 +14,7 @@ export interface StoredClient {
   blobUrl: string;
   tabs: ClientTab[];
   lastUpdated: string;
+  spendData?: SpendEntry[];
 }
 
 function migrateClient(raw: Record<string, unknown>): StoredClient {
@@ -203,6 +207,11 @@ export function useClients() {
     setActiveTabId(tabId);
   }, []);
 
+  const updateSpend = useCallback((clientId: string, spendData: SpendEntry[]) => {
+    setClients((prev) => prev.map((c) => (c.id === clientId ? { ...c, spendData } : c)));
+    patchClient(clientId, { spendData });
+  }, []);
+
   const activeClient = clients.find((c) => c.id === activeClientId) ?? null;
   const activeTab = activeClient?.tabs.find((t) => t.id === activeTabId) ?? activeClient?.tabs[0] ?? null;
 
@@ -224,5 +233,6 @@ export function useClients() {
     removeTab,
     renameTab,
     removeClient,
+    updateSpend,
   };
 }

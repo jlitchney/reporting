@@ -1,6 +1,12 @@
 import { Redis } from '@upstash/redis';
 import type { ChartConfig, ClientTab } from './types';
 
+export interface SpendEntry {
+  source: string;
+  weekOf: string;
+  amount: number;
+}
+
 export interface ClientRecord {
   id: string;
   name: string;
@@ -8,6 +14,7 @@ export interface ClientRecord {
   tabs?: ClientTab[];
   chartConfigs?: ChartConfig[]; // legacy
   lastUpdated: string;
+  spendData?: SpendEntry[];
 }
 
 function getRedis() {
