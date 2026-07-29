@@ -95,18 +95,21 @@ export function processChartData(leads: ParsedLead[], query: ChartQuery): ChartD
 
   if (!metric) return [];
 
+  const isAllCandidates = metric === '__all__';
   const effectiveStart = datePreset && datePreset !== 'custom' ? presetStart(datePreset) : (startDate ?? null);
   const effectiveEnd = datePreset === 'custom' ? (endDate ?? null) : null;
 
   const counts = new Map<number, number>();
 
   for (const lead of leads) {
-    const metricTag = lead.tags.get(metric);
-    if (!metricTag?.applied) continue;
-    if (excludeRemoved && metricTag.removed != null) continue;
+    if (!isAllCandidates) {
+      const metricTag = lead.tags.get(metric);
+      if (!metricTag?.applied) continue;
+      if (excludeRemoved && metricTag.removed != null) continue;
+    }
 
     let groupDate: Date | null = null;
-    if (dateField === 'created') {
+    if (isAllCandidates || dateField === 'created') {
       groupDate = lead.createdDate;
     } else {
       groupDate = lead.tags.get(dateField)?.applied ?? null;
@@ -118,7 +121,7 @@ export function processChartData(leads: ParsedLead[], query: ChartQuery): ChartD
 
     let passesFilters = true;
     for (const filter of filters) {
-      if (filter === metric) continue;
+      if (!isAllCandidates && filter === metric) continue;
       const filterTag = lead.tags.get(filter);
       if (!filterTag?.applied) {
         passesFilters = false;

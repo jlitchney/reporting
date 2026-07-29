@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import type { ParsedData, ChartConfig, ChartQuery, GroupBy, TagGroup, DatePreset } from '@/lib/types';
-import { processChartData, processTagGroupChart, countLeadsWithFilters, DATE_PRESET_LABELS } from '@/lib/dataProcessor';
+import { processChartData, processTagGroupChart, countLeadsWithFilters, countLeadsForTotal, DATE_PRESET_LABELS } from '@/lib/dataProcessor';
 import ReportBarChart from './ReportBarChart';
 import AppearanceControls from './AppearanceControls';
 
@@ -51,8 +51,11 @@ export default function ChartPanel({
 
   const totalCount = useMemo(() => {
     if (!query.metric) return 0;
+    if (query.metric === '__all__') {
+      return countLeadsForTotal(leads, null, query.datePreset ?? 'all_time', query.startDate, query.endDate, query.filters);
+    }
     return countLeadsWithFilters(leads, query.metric, query.filters);
-  }, [leads, query.metric, query.filters]);
+  }, [leads, query]);
 
   return (
     <div className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200/80">
@@ -134,7 +137,8 @@ export default function ChartPanel({
                   }}
                   className="rounded border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
                 >
-                  <option value="">Select a tag…</option>
+                  <option value="">— Select —</option>
+                  <option value="__all__">All Candidates</option>
                   {tagGroups.map((g) => (
                     <optgroup key={g.name} label={g.name}>
                       {g.tags.map((t) => (
@@ -143,7 +147,7 @@ export default function ChartPanel({
                     </optgroup>
                   ))}
                 </select>
-                {query.metric && (
+                {query.metric && query.metric !== '__all__' && (
                   <label className="mt-1 flex cursor-pointer items-center gap-1.5">
                     <input
                       type="checkbox"

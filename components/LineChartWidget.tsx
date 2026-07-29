@@ -43,14 +43,15 @@ export default function LineChartWidget({ data, config, accent, onUpdate, onRemo
           }}
           className="rounded border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
         >
-          <option value="">Select a tag…</option>
+          <option value="">— Select —</option>
+          <option value="__all__">All Candidates</option>
           {tagGroups.map((g) => (
             <optgroup key={g.name} label={g.name}>
               {g.tags.map((t) => <option key={t.label} value={t.label}>{t.tag}</option>)}
             </optgroup>
           ))}
         </select>
-        {query.metric && (
+        {query.metric && query.metric !== '__all__' && (
           <label className="mt-1 flex cursor-pointer items-center gap-1.5">
             <input type="checkbox" checked={query.excludeRemoved ?? false} onChange={(e) => updateQuery({ excludeRemoved: e.target.checked })} className="h-3.5 w-3.5 accent-[#1e3a6e]" />
             <span className="text-[10px] text-slate-500">Exclude removed</span>
@@ -119,7 +120,7 @@ export default function LineChartWidget({ data, config, accent, onUpdate, onRemo
         >
           <option value="">+ Add filter</option>
           {tagGroups.map((g) => {
-            const available = g.tags.filter((t) => t.label !== query.metric && !query.filters.includes(t.label));
+            const available = g.tags.filter((t) => t.label !== query.metric && t.label !== '__all__' && !query.filters.includes(t.label));
             if (!available.length) return null;
             return (
               <optgroup key={g.name} label={g.name}>
