@@ -66,6 +66,7 @@ export interface ChartQuery {
   endDate: Date | null;
   datePreset?: DatePreset;
   funnelStages?: string[];
+  funnelStageLabels?: Record<string, string>;
 }
 
 export interface ChartConfig {

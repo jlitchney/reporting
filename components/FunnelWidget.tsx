@@ -47,10 +47,19 @@ export default function FunnelWidget({ data, config, accent, onUpdate, onRemove,
           <div className="mb-2 space-y-1">
             {funnelStages.map((tagLabel, idx) => {
               const tagName = allTags.find((t) => t.label === tagLabel)?.tag ?? tagLabel;
+              const customLabel = query.funnelStageLabels?.[tagLabel] ?? '';
               return (
                 <div key={tagLabel} className="flex items-center gap-2 rounded border border-slate-200 bg-white px-2.5 py-1.5">
                   <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-semibold text-slate-500">{idx + 1}</span>
-                  <span className="flex-1 text-xs text-slate-700">{tagName}</span>
+                  <input
+                    type="text"
+                    value={customLabel}
+                    placeholder={tagName}
+                    onChange={(e) => updateQuery({
+                      funnelStageLabels: { ...query.funnelStageLabels, [tagLabel]: e.target.value },
+                    })}
+                    className="flex-1 bg-transparent text-xs text-slate-700 outline-none placeholder-slate-400 focus:bg-slate-50 rounded px-1 -mx-1"
+                  />
                   <button
                     onClick={() => updateQuery({ funnelStages: funnelStages.filter((_, i) => i !== idx) })}
                     className="text-slate-300 hover:text-slate-500 text-sm leading-none"

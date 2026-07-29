@@ -277,7 +277,9 @@ export function processFunnelChart(
   const effectiveEnd = datePreset === 'custom' ? (endDate ?? null) : null;
 
   const labelFor = (lbl: string) =>
-    tagGroups.flatMap((g) => g.tags).find((t) => t.label === lbl)?.tag ?? lbl;
+    query.funnelStageLabels?.[lbl] ??
+    tagGroups.flatMap((g) => g.tags).find((t) => t.label === lbl)?.tag ??
+    lbl;
 
   return funnelStages.map((tagLabel) => {
     const count = leads.filter((lead) => {
