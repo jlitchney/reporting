@@ -151,6 +151,9 @@ export default function LineChartWidget({ data, config, accent, onUpdate, onRemo
       showDragHandle={showDragHandle}
       onTitleSave={(t) => onUpdate(id, { title: t })}
       onRemove={() => onRemove(id)}
+      colSpan={config.colSpan ?? 3}
+      onColorChange={(c) => onUpdate(id, { color: c })}
+      onColSpanChange={(s) => onUpdate(id, { colSpan: s })}
       configPanel={configPanel}
     >
       <div className="px-4 pb-4 pt-2">

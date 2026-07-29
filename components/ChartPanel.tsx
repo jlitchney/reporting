@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import type { ParsedData, ChartConfig, ChartQuery, GroupBy, TagGroup, DatePreset } from '@/lib/types';
 import { processChartData, processTagGroupChart, countLeadsWithFilters, DATE_PRESET_LABELS } from '@/lib/dataProcessor';
 import ReportBarChart from './ReportBarChart';
+import AppearanceControls from './AppearanceControls';
 
 interface ChartPanelProps {
   data: ParsedData;
@@ -319,6 +320,15 @@ export default function ChartPanel({
               ))}
             </div>
           )}
+
+          <div className="mt-3 pt-3 border-t border-slate-100">
+            <AppearanceControls
+              color={accent}
+              colSpan={config.colSpan ?? 3}
+              onColorChange={(c) => onUpdate(id, { color: c })}
+              onColSpanChange={(s) => onUpdate(id, { colSpan: s })}
+            />
+          </div>
         </div>
       )}
 

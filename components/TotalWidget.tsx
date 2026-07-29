@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import type { ParsedData, ChartConfig, DatePreset, CriteriaFilter } from '@/lib/types';
 import { countLeadsForTotal, DATE_PRESET_LABELS } from '@/lib/dataProcessor';
 import CriteriaBuilder from './CriteriaBuilder';
+import AppearanceControls from './AppearanceControls';
 
 const PRESETS: DatePreset[] = ['all_time', 'this_year', 'this_month', 'last_30_days', 'last_90_days', 'custom'];
 
@@ -180,6 +181,13 @@ export default function TotalWidget({ data, config, accent, onUpdate, onRemove, 
                 tagGroups={tagGroups}
                 excludeTag={query.metric}
                 size="sm"
+              />
+            </div>
+
+            <div className="pt-3 border-t border-slate-100">
+              <AppearanceControls
+                color={accent}
+                onColorChange={(c) => onUpdate(id, { color: c })}
               />
             </div>
           </div>

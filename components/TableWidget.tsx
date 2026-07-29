@@ -107,6 +107,9 @@ export default function TableWidget({ data, config, accent, onUpdate, onRemove, 
       badge={total > 0 ? total.toLocaleString() : undefined}
       onTitleSave={(t) => onUpdate(id, { title: t })}
       onRemove={() => onRemove(id)}
+      colSpan={config.colSpan ?? 3}
+      onColorChange={(c) => onUpdate(id, { color: c })}
+      onColSpanChange={(s) => onUpdate(id, { colSpan: s })}
       configPanel={configPanel}
     >
       <div className="px-4 pb-4 pt-2">

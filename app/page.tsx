@@ -92,7 +92,8 @@ export default function Home() {
   const handleAddFromModal = useCallback(
     (config: Omit<ChartConfig, 'id'>) => {
       if (!activeClientId || !activeTab) return;
-      const newConfig: ChartConfig = { ...config, id: `widget-${Date.now()}` };
+      const defaultColor = config.color ?? CHART_ACCENT_COLORS[activeTab.chartConfigs.length % CHART_ACCENT_COLORS.length];
+      const newConfig: ChartConfig = { ...config, id: `widget-${Date.now()}`, color: defaultColor };
       updateTabCharts(activeClientId, activeTab.id, [...activeTab.chartConfigs, newConfig]);
     },
     [activeClientId, activeTab, updateTabCharts]
@@ -128,6 +129,8 @@ export default function Home() {
   const nonTotalWidgets = widgets.filter((w) => (w.type ?? 'bar') !== 'total');
 
   const accentFor = (id: string) => {
+    const w = widgets.find((w) => w.id === id);
+    if (w?.color) return w.color;
     const idx = widgets.findIndex((w) => w.id === id);
     return CHART_ACCENT_COLORS[idx % CHART_ACCENT_COLORS.length];
   };
@@ -263,32 +266,38 @@ export default function Home() {
               )}
 
               {/* Non-total widgets rendered in their original order */}
-              {nonTotalWidgets.map((w) => {
-                const commonProps = {
-                  data: parsedData,
-                  config: w,
-                  accent: accentFor(w.id),
-                  onUpdate: handleUpdateChart,
-                  onRemove: handleRemoveChart,
-                  canRemove: true as const,
-                  showDragHandle: true as const,
-                };
-                let widget: React.ReactNode;
-                switch (w.type ?? 'bar') {
-                  case 'line':      widget = <LineChartWidget {...commonProps} />; break;
-                  case 'pie':       widget = <PieChartWidget {...commonProps} />; break;
-                  case 'column':    widget = <ColumnChartWidget {...commonProps} />; break;
-                  case 'stacked_bar': widget = <StackedBarWidget {...commonProps} />; break;
-                  case 'table':     widget = <TableWidget {...commonProps} />; break;
-                  case 'funnel':    widget = <FunnelWidget {...commonProps} />; break;
-                  default:          widget = <ChartPanel {...commonProps} />;
-                }
-                return (
-                  <div key={w.id} {...draggableProps(w.id)} className={dragClass(w.id)}>
-                    {widget}
-                  </div>
-                );
-              })}
+              {nonTotalWidgets.length > 0 && (
+                <div className="grid grid-cols-3 gap-4">
+                  {nonTotalWidgets.map((w) => {
+                    const commonProps = {
+                      data: parsedData,
+                      config: w,
+                      accent: accentFor(w.id),
+                      onUpdate: handleUpdateChart,
+                      onRemove: handleRemoveChart,
+                      canRemove: true as const,
+                      showDragHandle: true as const,
+                    };
+                    let widget: React.ReactNode;
+                    switch (w.type ?? 'bar') {
+                      case 'line':        widget = <LineChartWidget {...commonProps} />; break;
+                      case 'pie':         widget = <PieChartWidget {...commonProps} />; break;
+                      case 'column':      widget = <ColumnChartWidget {...commonProps} />; break;
+                      case 'stacked_bar': widget = <StackedBarWidget {...commonProps} />; break;
+                      case 'table':       widget = <TableWidget {...commonProps} />; break;
+                      case 'funnel':      widget = <FunnelWidget {...commonProps} />; break;
+                      default:            widget = <ChartPanel {...commonProps} />;
+                    }
+                    const span = w.colSpan ?? 3;
+                    const spanClass = span === 1 ? 'col-span-1' : span === 2 ? 'col-span-2' : 'col-span-3';
+                    return (
+                      <div key={w.id} {...draggableProps(w.id)} className={`${spanClass} ${dragClass(w.id)}`}>
+                        {widget}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Empty state */}
               {widgets.length === 0 && (

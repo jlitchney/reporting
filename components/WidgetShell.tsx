@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import AppearanceControls from './AppearanceControls';
 
 interface WidgetShellProps {
   accent: string;
@@ -12,6 +13,9 @@ interface WidgetShellProps {
   onRemove: () => void;
   configPanel?: ReactNode;
   children: ReactNode;
+  colSpan?: 1 | 2 | 3;
+  onColorChange?: (color: string) => void;
+  onColSpanChange?: (span: 1 | 2 | 3) => void;
 }
 
 export default function WidgetShell({
@@ -24,12 +28,16 @@ export default function WidgetShell({
   onRemove,
   configPanel,
   children,
+  colSpan,
+  onColorChange,
+  onColSpanChange,
 }: WidgetShellProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
   const [configOpen, setConfigOpen] = useState(false);
 
   const commitTitle = () => { onTitleSave(titleDraft); setEditingTitle(false); };
+  const hasConfig = configPanel !== undefined || onColorChange !== undefined;
 
   return (
     <div className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200/80">
@@ -68,7 +76,7 @@ export default function WidgetShell({
           {badge != null && (
             <span className="mr-1 text-xs font-semibold text-slate-700">{badge}</span>
           )}
-          {configPanel !== undefined && (
+          {hasConfig && (
             <button
               onClick={() => setConfigOpen((v) => !v)}
               title="Configure"
@@ -93,9 +101,19 @@ export default function WidgetShell({
         </div>
       </div>
 
-      {configOpen && configPanel && (
+      {configOpen && hasConfig && (
         <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
-          {configPanel}
+          {configPanel && <div>{configPanel}</div>}
+          {onColorChange && (
+            <div className={configPanel ? 'mt-3 pt-3 border-t border-slate-100' : undefined}>
+              <AppearanceControls
+                color={accent}
+                colSpan={colSpan ?? 3}
+                onColorChange={onColorChange}
+                onColSpanChange={onColSpanChange}
+              />
+            </div>
+          )}
         </div>
       )}
 

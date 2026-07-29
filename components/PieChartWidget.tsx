@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import type { ParsedData, ChartConfig, ChartQuery, DatePreset } from '@/lib/types';
 import { processTagGroupChart, DATE_PRESET_LABELS } from '@/lib/dataProcessor';
+import AppearanceControls from './AppearanceControls';
 
 const DATE_PRESETS: DatePreset[] = ['all_time', 'this_year', 'this_month', 'last_30_days', 'last_90_days', 'custom'];
 const PIE_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#14b8a6', '#f97316', '#ec4899', '#06b6d4', '#84cc16'];
@@ -216,6 +217,15 @@ export default function PieChartWidget({
               ))}
             </div>
           )}
+
+          <div className="mt-3 pt-3 border-t border-slate-100">
+            <AppearanceControls
+              color={accent}
+              colSpan={config.colSpan ?? 3}
+              onColorChange={(c) => onUpdate(id, { color: c })}
+              onColSpanChange={(s) => onUpdate(id, { colSpan: s })}
+            />
+          </div>
         </div>
       )}
 

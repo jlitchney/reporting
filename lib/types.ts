@@ -73,6 +73,8 @@ export interface ChartConfig {
   type?: WidgetType;
   title: string;
   query: ChartQuery;
+  color?: string;
+  colSpan?: 1 | 2 | 3;
 }
 
 export interface ClientTab {
