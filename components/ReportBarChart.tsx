@@ -36,18 +36,22 @@ export default function ReportBarChart({ data, color = '#2563eb' }: ReportBarCha
     );
   }
 
+  const rotateLabels = data.length > 8;
   const showLabels = data.length <= 26;
+  const tickInterval = rotateLabels ? 0 : (data.length > 20 ? Math.floor(data.length / 12) : 0);
 
   return (
-    <ResponsiveContainer width="100%" height={280}>
+    <ResponsiveContainer width="100%" height={rotateLabels ? 320 : 280}>
       <BarChart data={data} margin={{ top: 20, right: 16, left: 0, bottom: 4 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
         <XAxis
           dataKey="period"
-          tick={{ fontSize: 11, fill: '#94a3b8' }}
+          tick={{ fontSize: 11, fill: '#94a3b8', textAnchor: rotateLabels ? 'end' : 'middle' }}
           axisLine={false}
           tickLine={false}
-          interval={data.length > 20 ? Math.floor(data.length / 12) : 0}
+          angle={rotateLabels ? -45 : 0}
+          interval={tickInterval}
+          height={rotateLabels ? 72 : 30}
         />
         <YAxis
           tick={{ fontSize: 11, fill: '#94a3b8' }}
