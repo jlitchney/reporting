@@ -51,12 +51,13 @@ export default function ChartPanel({
     onUpdate(id, { type: newType, query: { ...query, ...queryPatch } });
   };
 
-  const chartData = useMemo(
-    () => query.tagGroupAxis
-      ? processTagGroupChart(leads, tagGroups, query.tagGroupAxis, query)
-      : processChartData(leads, query),
-    [leads, tagGroups, query]
-  );
+  const chartData = useMemo(() => {
+    if (query.tagGroupAxis) {
+      const raw = processTagGroupChart(leads, tagGroups, query.tagGroupAxis, query);
+      return query.filters.length > 0 ? raw.filter((d) => d.count > 0) : raw;
+    }
+    return processChartData(leads, query);
+  }, [leads, tagGroups, query]);
 
   const totalCount = useMemo(() => {
     if (!query.metric) return 0;
