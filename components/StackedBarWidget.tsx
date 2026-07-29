@@ -103,6 +103,24 @@ export default function StackedBarWidget({ data, config, accent, onUpdate, onRem
           </div>
         )}
       </div>
+
+      <div className="flex flex-col gap-1">
+        <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Filter by</label>
+        <select value="" onChange={(e) => { const val = e.target.value; if (val && !query.filters.includes(val)) updateQuery({ filters: [...query.filters, val] }); }} className="rounded border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200">
+          <option value="">+ Add filter</option>
+          {tagGroups.map((g) => { const available = g.tags.filter((t) => !query.filters.includes(t.label)); if (!available.length) return null; return (<optgroup key={g.name} label={g.name}>{available.map((t) => <option key={t.label} value={t.label}>{t.tag}</option>)}</optgroup>); })}
+        </select>
+      </div>
+
+      {query.filters.length > 0 && (
+        <div className="w-full flex flex-wrap gap-1.5 mt-1">
+          {query.filters.map((f) => (
+            <span key={f} className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: accent }}>
+              {f}<button onClick={() => updateQuery({ filters: query.filters.filter((x) => x !== f) })} className="opacity-70 hover:opacity-100">×</button>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 
