@@ -233,11 +233,14 @@ export function processStackedBarChart(
     if (!periodData.has(key)) periodData.set(key, new Map());
     const periodMap = periodData.get(key)!;
 
+    // Count each lead in at most one stack bucket (first matching tag wins)
+    // so stacked totals match the simple metric count.
     for (const tag of stackGroup.tags) {
       const tagEntry = lead.tags.get(tag.label);
       if (!tagEntry?.applied) continue;
       if (excludeRemoved && tagEntry.removed != null) continue;
       periodMap.set(tag.label, (periodMap.get(tag.label) ?? 0) + 1);
+      break;
     }
   }
 
