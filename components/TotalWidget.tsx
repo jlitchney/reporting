@@ -122,12 +122,12 @@ export default function TotalWidget({ data, config, accent, onUpdate, onRemove, 
                   const metric = e.target.value || null;
                   const autoTitle = metric
                     ? (tagGroups.flatMap((g) => g.tags).find((t) => t.label === metric)?.tag ?? title)
-                    : 'Total Leads';
+                    : 'Total Candidates';
                   onUpdate(id, { title: autoTitle, query: { ...query, metric } });
                 }}
                 className="w-full rounded border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
               >
-                <option value="">All Leads</option>
+                <option value="">All Candidates</option>
                 {tagGroups.map((g) => (
                   <optgroup key={g.name} label={g.name}>
                     {g.tags.map((t) => (

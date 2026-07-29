@@ -54,7 +54,7 @@ export default function MetricCards({ data }: MetricCardsProps) {
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       <StatCard
-        label="Total Leads"
+        label="Total Candidates"
         value={leads.length}
         accent={ACCENT_COLORS[colorIndex++]}
       />

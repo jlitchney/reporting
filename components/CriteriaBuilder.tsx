@@ -54,7 +54,7 @@ export default function CriteriaBuilder({
     <div className="space-y-1.5">
       {conditions.length === 0 && (
         <p className={`text-slate-400 ${sm ? 'text-[10px]' : 'text-xs'}`}>
-          No criteria — all leads count.
+          No criteria — all candidates count.
         </p>
       )}
 
