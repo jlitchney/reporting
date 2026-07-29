@@ -430,13 +430,19 @@ export function computeCostMetrics(
   const effectiveEnd = query.datePreset === 'custom' ? (query.endDate ?? null) : null;
 
   // Collect all metric-tag applied dates to determine week range
+  // tagLabel === '' means "All Candidates" — use createdDate
   const allDates: Date[] = [];
   for (const lead of leads) {
     for (const def of metricDefs) {
-      const entry = lead.tags.get(def.tagLabel);
-      if (!entry?.applied) continue;
-      if (query.excludeRemoved && entry.removed != null) continue;
-      const d = entry.applied;
+      const d = def.tagLabel === ''
+        ? lead.createdDate
+        : (() => {
+            const entry = lead.tags.get(def.tagLabel);
+            if (!entry?.applied) return null;
+            if (query.excludeRemoved && entry.removed != null) return null;
+            return entry.applied;
+          })();
+      if (!d) continue;
       if (effectiveStart && isBefore(d, effectiveStart)) continue;
       if (effectiveEnd && isAfter(d, effectiveEnd)) continue;
       allDates.push(d);
@@ -465,8 +471,16 @@ export function computeCostMetrics(
     const nextWeek = addWeeks(week, 1);
     const inWeek = (d: Date) => d.getTime() >= weekMs && d.getTime() < nextWeek.getTime();
 
-    // Returns true if a lead's metric tag was applied in this week and passes filters
+    // Returns true if a lead qualifies for the metric in this week
+    // tagLabel === '' means "All Candidates" — counts by createdDate
     const qualifiesForMetric = (lead: ParsedLead, def: CostMetricDef) => {
+      if (def.tagLabel === '') {
+        const d = lead.createdDate;
+        if (!d || !inWeek(d)) return false;
+        if (effectiveStart && isBefore(d, effectiveStart)) return false;
+        if (effectiveEnd && isAfter(d, effectiveEnd)) return false;
+        return true;
+      }
       const entry = lead.tags.get(def.tagLabel);
       if (!entry?.applied || !inWeek(entry.applied)) return false;
       if (query.excludeRemoved && entry.removed != null) return false;

@@ -104,6 +104,7 @@ export default function CostTableWidget({
                 }}
                 className="min-w-0 flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-[#1e3a6e]"
               >
+                <option value="">All Candidates</option>
                 {tagGroups.map((g) => (
                   <optgroup key={g.name} label={g.name}>
                     {g.tags.map((t) => (
