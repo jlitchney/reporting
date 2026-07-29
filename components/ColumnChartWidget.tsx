@@ -40,7 +40,7 @@ export default function ColumnChartWidget({ data, config, accent, onUpdate, onRe
     [leads, tagGroups, tagGroupName, query]
   );
 
-  const chartHeight = Math.max(200, chartData.length * 36 + 40);
+  const chartHeight = config.chartHeight ?? Math.max(200, chartData.length * 36 + 40);
 
   const configPanel = (
     <div className="flex flex-wrap items-end gap-3">
@@ -141,9 +141,11 @@ export default function ColumnChartWidget({ data, config, accent, onUpdate, onRe
       showDragHandle={showDragHandle}
       onTitleSave={(t) => onUpdate(id, { title: t })}
       onRemove={() => onRemove(id)}
-      colSpan={config.colSpan ?? 3}
+      colSpan={config.colSpan ?? 4}
+      chartHeight={config.chartHeight}
       onColorChange={(c) => onUpdate(id, { color: c })}
       onColSpanChange={(s) => onUpdate(id, { colSpan: s })}
+      onHeightChange={(h) => onUpdate(id, { chartHeight: h })}
       configPanel={configPanel}
     >
       <div className="px-4 pb-4 pt-2">

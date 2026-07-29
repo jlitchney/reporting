@@ -74,7 +74,8 @@ export interface ChartConfig {
   title: string;
   query: ChartQuery;
   color?: string;
-  colSpan?: 1 | 2 | 3;
+  colSpan?: 1 | 2 | 3 | 4;
+  chartHeight?: number;
 }
 
 export interface ClientTab {

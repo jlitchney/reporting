@@ -221,7 +221,7 @@ export default function PieChartWidget({
           <div className="mt-3 pt-3 border-t border-slate-100">
             <AppearanceControls
               color={accent}
-              colSpan={config.colSpan ?? 3}
+              colSpan={config.colSpan ?? 4}
               onColorChange={(c) => onUpdate(id, { color: c })}
               onColSpanChange={(s) => onUpdate(id, { colSpan: s })}
             />

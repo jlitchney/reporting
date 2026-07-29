@@ -267,7 +267,7 @@ export default function Home() {
 
               {/* Non-total widgets rendered in their original order */}
               {nonTotalWidgets.length > 0 && (
-                <div className="grid grid-cols-6 gap-4">
+                <div className="grid grid-cols-4 gap-4">
                   {nonTotalWidgets.map((w) => {
                     const commonProps = {
                       data: parsedData,
@@ -288,8 +288,8 @@ export default function Home() {
                       case 'funnel':      widget = <FunnelWidget {...commonProps} />; break;
                       default:            widget = <ChartPanel {...commonProps} />;
                     }
-                    const span = w.colSpan ?? 3;
-                    const spanClass = span === 1 ? 'col-span-2' : span === 2 ? 'col-span-3' : 'col-span-6';
+                    const span = w.colSpan ?? 4;
+                    const spanClass = span === 1 ? 'col-span-1' : span === 2 ? 'col-span-2' : span === 3 ? 'col-span-3' : 'col-span-4';
                     return (
                       <div key={w.id} {...draggableProps(w.id)} className={`${spanClass} ${dragClass(w.id)}`}>
                         {widget}

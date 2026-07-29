@@ -15,6 +15,7 @@ import type { ChartDataPoint } from '@/lib/types';
 interface ReportBarChartProps {
   data: ChartDataPoint[];
   color?: string;
+  height?: number;
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -27,7 +28,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export default function ReportBarChart({ data, color = '#2563eb' }: ReportBarChartProps) {
+export default function ReportBarChart({ data, color = '#2563eb', height = 300 }: ReportBarChartProps) {
   if (!data.length) {
     return (
       <div className="flex h-64 items-center justify-center text-sm text-slate-400">
@@ -41,7 +42,7 @@ export default function ReportBarChart({ data, color = '#2563eb' }: ReportBarCha
   const tickInterval = rotateLabels ? 0 : (data.length > 20 ? Math.floor(data.length / 12) : 0);
 
   return (
-    <ResponsiveContainer width="100%" height={rotateLabels ? 320 : 280}>
+    <ResponsiveContainer width="100%" height={rotateLabels ? height + 40 : height}>
       <BarChart data={data} margin={{ top: 20, right: 16, left: 0, bottom: 4 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
         <XAxis

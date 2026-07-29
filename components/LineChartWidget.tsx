@@ -151,13 +151,15 @@ export default function LineChartWidget({ data, config, accent, onUpdate, onRemo
       showDragHandle={showDragHandle}
       onTitleSave={(t) => onUpdate(id, { title: t })}
       onRemove={() => onRemove(id)}
-      colSpan={config.colSpan ?? 3}
+      colSpan={config.colSpan ?? 4}
+      chartHeight={config.chartHeight}
       onColorChange={(c) => onUpdate(id, { color: c })}
       onColSpanChange={(s) => onUpdate(id, { colSpan: s })}
+      onHeightChange={(h) => onUpdate(id, { chartHeight: h })}
       configPanel={configPanel}
     >
       <div className="px-4 pb-4 pt-2">
-        <ReportLineChart data={chartData} color={accent} />
+        <ReportLineChart data={chartData} color={accent} height={config.chartHeight} />
       </div>
     </WidgetShell>
   );

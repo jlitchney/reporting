@@ -113,9 +113,11 @@ export default function FunnelWidget({ data, config, accent, onUpdate, onRemove,
       showDragHandle={showDragHandle}
       onTitleSave={(t) => onUpdate(id, { title: t })}
       onRemove={() => onRemove(id)}
-      colSpan={config.colSpan ?? 3}
+      colSpan={config.colSpan ?? 4}
+      chartHeight={config.chartHeight}
       onColorChange={(c) => onUpdate(id, { color: c })}
       onColSpanChange={(s) => onUpdate(id, { colSpan: s })}
+      onHeightChange={(h) => onUpdate(id, { chartHeight: h })}
       configPanel={configPanel}
     >
       <div className="px-4 pb-6 pt-3">
@@ -133,7 +135,8 @@ export default function FunnelWidget({ data, config, accent, onUpdate, onRemove,
             )}
             <div className="flex items-end gap-2">
               {funnelData.map((stage, idx) => {
-                const barHeight = maxCount > 0 ? Math.max(Math.round((stage.count / maxCount) * 200), 6) : 6;
+                const maxBarHeight = config.chartHeight ?? 200;
+                const barHeight = maxCount > 0 ? Math.max(Math.round((stage.count / maxCount) * maxBarHeight), 6) : 6;
                 const convPct = idx > 0 && funnelData[idx - 1].count > 0
                   ? ((stage.count / funnelData[idx - 1].count) * 100).toFixed(1)
                   : null;

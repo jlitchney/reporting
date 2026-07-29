@@ -13,9 +13,11 @@ interface WidgetShellProps {
   onRemove: () => void;
   configPanel?: ReactNode;
   children: ReactNode;
-  colSpan?: 1 | 2 | 3;
+  colSpan?: 1 | 2 | 3 | 4;
+  chartHeight?: number;
   onColorChange?: (color: string) => void;
-  onColSpanChange?: (span: 1 | 2 | 3) => void;
+  onColSpanChange?: (span: 1 | 2 | 3 | 4) => void;
+  onHeightChange?: (h: number) => void;
 }
 
 export default function WidgetShell({
@@ -29,8 +31,10 @@ export default function WidgetShell({
   configPanel,
   children,
   colSpan,
+  chartHeight,
   onColorChange,
   onColSpanChange,
+  onHeightChange,
 }: WidgetShellProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
@@ -108,9 +112,11 @@ export default function WidgetShell({
             <div className={configPanel ? 'mt-3 pt-3 border-t border-slate-100' : undefined}>
               <AppearanceControls
                 color={accent}
-                colSpan={colSpan ?? 3}
+                colSpan={colSpan ?? 4}
+                chartHeight={chartHeight}
                 onColorChange={onColorChange}
                 onColSpanChange={onColSpanChange}
+                onHeightChange={onHeightChange}
               />
             </div>
           )}

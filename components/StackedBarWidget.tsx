@@ -61,6 +61,7 @@ export default function StackedBarWidget({ data, config, accent, onUpdate, onRem
   );
 
   const rotateLabels = chartData.length > 8;
+  const chartHeight = config.chartHeight ?? 300;
 
   const configPanel = (
     <div className="flex flex-wrap items-end gap-3">
@@ -132,9 +133,11 @@ export default function StackedBarWidget({ data, config, accent, onUpdate, onRem
       showDragHandle={showDragHandle}
       onTitleSave={(t) => onUpdate(id, { title: t })}
       onRemove={() => onRemove(id)}
-      colSpan={config.colSpan ?? 3}
+      colSpan={config.colSpan ?? 4}
+      chartHeight={config.chartHeight}
       onColorChange={(c) => onUpdate(id, { color: c })}
       onColSpanChange={(s) => onUpdate(id, { colSpan: s })}
+      onHeightChange={(h) => onUpdate(id, { chartHeight: h })}
       configPanel={configPanel}
     >
       <div className="px-4 pb-4 pt-2">
@@ -142,7 +145,7 @@ export default function StackedBarWidget({ data, config, accent, onUpdate, onRem
           <div className="flex h-64 items-center justify-center text-sm text-slate-400">No data for the selected criteria</div>
         ) : (
           <>
-            <ResponsiveContainer width="100%" height={rotateLabels ? 320 : 280}>
+            <ResponsiveContainer width="100%" height={rotateLabels ? chartHeight + 40 : chartHeight}>
               <BarChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                 <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#94a3b8', textAnchor: rotateLabels ? 'end' : 'middle' }} axisLine={false} tickLine={false} angle={rotateLabels ? -45 : 0} interval={rotateLabels ? 0 : 'preserveStartEnd'} height={rotateLabels ? 72 : 30} />

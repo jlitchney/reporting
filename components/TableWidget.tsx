@@ -107,15 +107,18 @@ export default function TableWidget({ data, config, accent, onUpdate, onRemove, 
       badge={total > 0 ? total.toLocaleString() : undefined}
       onTitleSave={(t) => onUpdate(id, { title: t })}
       onRemove={() => onRemove(id)}
-      colSpan={config.colSpan ?? 3}
+      colSpan={config.colSpan ?? 4}
+      chartHeight={config.chartHeight}
       onColorChange={(c) => onUpdate(id, { color: c })}
       onColSpanChange={(s) => onUpdate(id, { colSpan: s })}
+      onHeightChange={(h) => onUpdate(id, { chartHeight: h })}
       configPanel={configPanel}
     >
       <div className="px-4 pb-4 pt-2">
         {tableData.length === 0 ? (
           <div className="flex h-32 items-center justify-center text-sm text-slate-400">No data for the selected criteria</div>
         ) : (
+          <div style={config.chartHeight ? { maxHeight: config.chartHeight, overflowY: 'auto' } : undefined}>
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-slate-100">
@@ -149,6 +152,7 @@ export default function TableWidget({ data, config, accent, onUpdate, onRemove, 
               </tr>
             </tfoot>
           </table>
+          </div>
         )}
       </div>
     </WidgetShell>

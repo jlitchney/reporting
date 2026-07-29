@@ -324,9 +324,11 @@ export default function ChartPanel({
           <div className="mt-3 pt-3 border-t border-slate-100">
             <AppearanceControls
               color={accent}
-              colSpan={config.colSpan ?? 3}
+              colSpan={config.colSpan ?? 4}
+              chartHeight={config.chartHeight}
               onColorChange={(c) => onUpdate(id, { color: c })}
               onColSpanChange={(s) => onUpdate(id, { colSpan: s })}
+              onHeightChange={(h) => onUpdate(id, { chartHeight: h })}
             />
           </div>
         </div>
@@ -334,7 +336,7 @@ export default function ChartPanel({
 
       {/* Chart */}
       <div className="px-4 pb-4 pt-2">
-        <ReportBarChart data={chartData} color={accent} />
+        <ReportBarChart data={chartData} color={accent} height={config.chartHeight} />
       </div>
     </div>
   );
