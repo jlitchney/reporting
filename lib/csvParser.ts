@@ -6,9 +6,18 @@ function parseDate(val: string): Date | null {
   const trimmed = val.trim();
 
   // ISO 8601 (e.g. 2025-06-12T01:26:50.6694092Z)
+  // Normalize UTC/offset timestamps to their UTC components so date-fns week/month
+  // bucketing isn't shifted by the browser's local timezone.
   if (trimmed.includes('-') && trimmed.includes('T')) {
     const d = new Date(trimmed);
-    return isNaN(d.getTime()) ? null : d;
+    if (isNaN(d.getTime())) return null;
+    if (trimmed.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(trimmed)) {
+      return new Date(
+        d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(),
+        d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds()
+      );
+    }
+    return d;
   }
 
   // Date-only ISO (e.g. 2025-06-12)
