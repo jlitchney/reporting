@@ -26,11 +26,12 @@ const STACK_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#1
 
 const StackedTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
-  const total = payload.reduce((s: number, p: any) => s + (p.value || 0), 0);
+  const visible = payload.filter((p: any) => p.dataKey !== '__phantom');
+  const total = visible.reduce((s: number, p: any) => s + (p.value || 0), 0);
   return (
     <div className="rounded-lg bg-slate-800 px-3 py-2 text-xs text-white shadow-lg">
       <p className="font-medium mb-1">{label}</p>
-      {[...payload].reverse().map((p: any) => (
+      {[...visible].reverse().map((p: any) => (
         <p key={p.dataKey} style={{ color: p.fill }}>{p.name}: {Number(p.value).toLocaleString()}</p>
       ))}
       <p className="mt-1 border-t border-slate-600 pt-1 text-slate-300">Total: {total.toLocaleString()}</p>
@@ -68,10 +69,10 @@ export default function StackedBarWidget({ data, config, accent, onUpdate, onRem
   const chartHeight = config.chartHeight ?? 300;
 
   const chartDataWithTotals = useMemo(
-    () => chartData.map((d) => ({
-      ...d,
-      __total: stackGroup?.tags.reduce((sum, tag) => sum + ((d[tag.label] as number) ?? 0), 0) ?? 0,
-    })),
+    () => chartData.map((d) => {
+      const total = stackGroup?.tags.reduce((sum, tag) => sum + ((d[tag.label] as number) ?? 0), 0) ?? 0;
+      return { ...d, __total: total, __phantom: total > 0 ? 0.001 : 0 };
+    }),
     [chartData, stackGroup]
   );
 
@@ -186,31 +187,31 @@ export default function StackedBarWidget({ data, config, accent, onUpdate, onRem
                 {stackGroup?.tags.map((tag, idx) => {
                   const isTop = idx === stackGroup.tags.length - 1;
                   return (
-                    <Bar key={tag.label} dataKey={tag.label} name={tag.tag} stackId="s" fill={seriesColor(tag.label, idx)} maxBarSize={48} radius={isTop ? [4, 4, 0, 0] : [0, 0, 0, 0]}>
-                      {isTop && (
-                        <LabelList
-                          dataKey="__total"
-                          content={(props: any) => {
-                            const { x, y, width, value } = props;
-                            if (!value) return null;
-                            return (
-                              <text
-                                x={(x ?? 0) + (width ?? 0) / 2}
-                                y={(y ?? 0) - 4}
-                                textAnchor="middle"
-                                fill="#64748b"
-                                fontSize="10"
-                                fontWeight="500"
-                              >
-                                {Number(value).toLocaleString()}
-                              </text>
-                            );
-                          }}
-                        />
-                      )}
-                    </Bar>
+                    <Bar key={tag.label} dataKey={tag.label} name={tag.tag} stackId="s" fill={seriesColor(tag.label, idx)} maxBarSize={48} radius={isTop ? [4, 4, 0, 0] : [0, 0, 0, 0]} />
                   );
                 })}
+                {/* Phantom bar: always non-zero so LabelList fires for every column */}
+                <Bar dataKey="__phantom" name="" stackId="s" fill="transparent" stroke="none" maxBarSize={48} isAnimationActive={false} legendType="none">
+                  <LabelList
+                    dataKey="__total"
+                    content={(props: any) => {
+                      const { x, y, width, value } = props;
+                      if (!value) return null;
+                      return (
+                        <text
+                          x={(x ?? 0) + (width ?? 0) / 2}
+                          y={(y ?? 0) - 4}
+                          textAnchor="middle"
+                          fill="#64748b"
+                          fontSize="10"
+                          fontWeight="500"
+                        >
+                          {Number(value).toLocaleString()}
+                        </text>
+                      );
+                    }}
+                  />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
             {stackGroup && (
