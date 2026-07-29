@@ -184,7 +184,25 @@ export default function StackedBarWidget({ data, config, accent, onUpdate, onRem
                   return (
                     <Bar key={tag.label} dataKey={tag.label} name={tag.tag} stackId="s" fill={seriesColor(tag.label, idx)} maxBarSize={48} radius={isTop ? [4, 4, 0, 0] : [0, 0, 0, 0]}>
                       {isTop && (
-                        <LabelList dataKey="__total" position="top" style={{ fontSize: 10, fill: '#64748b', fontWeight: 500 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v).toLocaleString() : '')} />
+                        <LabelList
+                          dataKey="__total"
+                          content={(props: any) => {
+                            const { x, y, width, value } = props;
+                            if (!value) return null;
+                            return (
+                              <text
+                                x={(x ?? 0) + (width ?? 0) / 2}
+                                y={(y ?? 0) - 4}
+                                textAnchor="middle"
+                                fill="#64748b"
+                                fontSize="10"
+                                fontWeight="500"
+                              >
+                                {Number(value).toLocaleString()}
+                              </text>
+                            );
+                          }}
+                        />
                       )}
                     </Bar>
                   );
