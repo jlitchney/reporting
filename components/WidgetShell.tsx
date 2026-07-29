@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, useRef, useCallback, type ReactNode } from 'react';
 import AppearanceControls from './AppearanceControls';
 
 interface WidgetShellProps {
@@ -43,11 +43,45 @@ export default function WidgetShell({
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
   const [configOpen, setConfigOpen] = useState(false);
+  const widgetRef = useRef<HTMLDivElement>(null);
 
   const commitTitle = () => { onTitleSave(titleDraft); setEditingTitle(false); };
   const hasConfig = configPanel !== undefined || onColorChange !== undefined;
 
+  const handleHeightDragStart = useCallback((e: React.MouseEvent) => {
+    if (!onHeightChange) return;
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = chartHeight ?? 300;
+    const onMove = (ev: MouseEvent) => {
+      const newH = Math.max(100, Math.min(800, startH + ev.clientY - startY));
+      onHeightChange(Math.round(newH / 5) * 5);
+    };
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [onHeightChange, chartHeight]);
+
+  const handleWidthDragStart = useCallback((e: React.MouseEvent) => {
+    if (!onColSpanChange || !widgetRef.current) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startSpan = colSpan ?? 4;
+    const startW = widgetRef.current.offsetWidth;
+    const gap = 16;
+    const colW = (startW - (startSpan - 1) * gap) / startSpan;
+    const onMove = (ev: MouseEvent) => {
+      const targetW = startW + (ev.clientX - startX);
+      const newSpan = Math.max(1, Math.min(4, Math.round((targetW + gap) / (colW + gap)))) as 1 | 2 | 3 | 4;
+      onColSpanChange(newSpan);
+    };
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [onColSpanChange, colSpan]);
+
   return (
+    <div ref={widgetRef} className="group relative">
     <div className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200/80">
       <div className="h-1 w-full" style={{ backgroundColor: accent }} />
 
@@ -143,6 +177,29 @@ export default function WidgetShell({
       )}
 
       {children}
+    </div>
+
+    {/* Height resize handle */}
+    {!readOnly && onHeightChange && (
+      <div
+        onMouseDown={handleHeightDragStart}
+        className="absolute -bottom-2 left-0 right-0 flex cursor-row-resize items-center justify-center py-1 opacity-0 transition-opacity group-hover:opacity-100 z-10"
+        title="Drag to resize height"
+      >
+        <div className="h-1 w-12 rounded-full bg-slate-400" />
+      </div>
+    )}
+
+    {/* Width resize handle */}
+    {!readOnly && onColSpanChange && (
+      <div
+        onMouseDown={handleWidthDragStart}
+        className="absolute -right-2 bottom-0 top-0 flex cursor-col-resize items-center justify-center px-1 opacity-0 transition-opacity group-hover:opacity-100 z-10"
+        title="Drag to resize width"
+      >
+        <div className="h-12 w-1 rounded-full bg-slate-400" />
+      </div>
+    )}
     </div>
   );
 }

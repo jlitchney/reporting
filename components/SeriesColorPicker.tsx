@@ -35,7 +35,7 @@ export default function SeriesColorPicker({ series, onColorChange }: Props) {
               <span className="ml-auto text-slate-400">{activeId === s.id ? '▲' : '▼'}</span>
             </button>
             {activeId === s.id && (
-              <div className="mt-1 ml-2 flex flex-wrap gap-1.5">
+              <div className="mt-1 ml-2 flex flex-wrap items-center gap-1.5">
                 {COLOR_PALETTE.map((c) => (
                   <button
                     key={c}
@@ -47,6 +47,21 @@ export default function SeriesColorPicker({ series, onColorChange }: Props) {
                     }}
                   />
                 ))}
+                <label
+                  title="Custom color"
+                  className="relative h-5 w-5 flex-shrink-0 cursor-pointer rounded-full overflow-hidden transition-transform hover:scale-110"
+                  style={{
+                    background: 'conic-gradient(red, yellow, lime, aqua, blue, magenta, red)',
+                    boxShadow: !COLOR_PALETTE.includes(s.color) ? `0 0 0 2px white, 0 0 0 3.5px ${s.color}` : undefined,
+                  }}
+                >
+                  <input
+                    type="color"
+                    value={s.color}
+                    onChange={(e) => onColorChange(s.id, e.target.value)}
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  />
+                </label>
               </div>
             )}
           </div>

@@ -27,19 +27,36 @@ export default function AppearanceControls({ color, colSpan, chartHeight, onColo
     <div className="flex flex-wrap items-end gap-4">
       <div className="flex flex-col gap-1.5">
         <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Color</label>
-        <div className="grid grid-cols-6 gap-1.5">
-          {PALETTE.map((c) => (
-            <button
-              key={c}
-              onClick={() => onColorChange(c)}
-              title={c}
-              className="h-5 w-5 rounded-full transition-transform hover:scale-110"
-              style={{
-                backgroundColor: c,
-                boxShadow: color === c ? `0 0 0 2px white, 0 0 0 3.5px ${c}` : undefined,
-              }}
+        <div className="flex items-center gap-1.5">
+          <div className="grid grid-cols-6 gap-1.5">
+            {PALETTE.map((c) => (
+              <button
+                key={c}
+                onClick={() => onColorChange(c)}
+                title={c}
+                className="h-5 w-5 rounded-full transition-transform hover:scale-110"
+                style={{
+                  backgroundColor: c,
+                  boxShadow: color === c ? `0 0 0 2px white, 0 0 0 3.5px ${c}` : undefined,
+                }}
+              />
+            ))}
+          </div>
+          <label
+            title="Custom color"
+            className="relative h-5 w-5 flex-shrink-0 cursor-pointer rounded-full overflow-hidden transition-transform hover:scale-110"
+            style={{
+              background: 'conic-gradient(red, yellow, lime, aqua, blue, magenta, red)',
+              boxShadow: !PALETTE.includes(color) ? `0 0 0 2px white, 0 0 0 3.5px ${color}` : undefined,
+            }}
+          >
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => onColorChange(e.target.value)}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             />
-          ))}
+          </label>
         </div>
       </div>
 
