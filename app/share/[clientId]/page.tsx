@@ -97,16 +97,11 @@ export default function SharePage() {
       {/* Header */}
       <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-3 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="flex h-7 w-7 items-center justify-center rounded bg-[#1e3a6e] text-xs font-bold text-white">
-            CR
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-slate-400">Campaign Reports</span>
-            <svg className="h-3 w-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            <span className="font-semibold text-slate-700">{client.name}</span>
-          </div>
+          <img src="/logo-black.png" alt="All-Star Recruiter" className="h-7 w-auto" />
+          <svg className="h-3 w-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <span className="font-semibold text-slate-700 text-sm">{client.name}</span>
         </div>
         {client.lastUpdated && (
           <span className="text-xs text-slate-400">

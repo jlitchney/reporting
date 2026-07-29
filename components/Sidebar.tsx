@@ -61,11 +61,8 @@ export default function Sidebar({
   return (
     <aside className="flex h-screen w-56 flex-shrink-0 flex-col bg-[#1e3a6e] text-white">
       {/* Logo */}
-      <div className="flex items-center gap-2 px-5 py-5 border-b border-white/10">
-        <div className="flex h-7 w-7 items-center justify-center rounded bg-white/15 text-xs font-bold">
-          CR
-        </div>
-        <span className="text-sm font-semibold tracking-wide">Campaign Reports</span>
+      <div className="flex items-center px-5 py-4 border-b border-white/10">
+        <img src="/logo-white.png" alt="All-Star Recruiter" className="h-7 w-auto" />
       </div>
 
       {/* Clients list */}
