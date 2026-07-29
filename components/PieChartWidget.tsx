@@ -18,6 +18,7 @@ interface PieChartWidgetProps {
   onRemove: (id: string) => void;
   canRemove: boolean;
   showDragHandle?: boolean;
+  readOnly?: boolean;
 }
 
 export default function PieChartWidget({

@@ -115,9 +115,21 @@ export default function Sidebar({
                 </button>
               )}
 
-              {/* Hover actions: rename + delete */}
+              {/* Hover actions: share link + rename + delete */}
               {hoverId === client.id && renamingId !== client.id && (
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                  <button
+                    onClick={() => {
+                      const url = `${window.location.origin}/share/${client.id}`;
+                      navigator.clipboard.writeText(url).catch(() => {});
+                    }}
+                    title="Copy share link"
+                    className="rounded p-0.5 text-white/30 hover:text-white/80 transition-colors"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                  </button>
                   <button
                     onClick={() => startRename(client)}
                     title="Rename client"

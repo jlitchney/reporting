@@ -25,16 +25,17 @@ interface TotalWidgetProps {
   onUpdate: (id: string, updates: Partial<ChartConfig>) => void;
   onRemove: (id: string) => void;
   showDragHandle?: boolean;
+  readOnly?: boolean;
 }
 
-export default function TotalWidget({ data, config, accent, onUpdate, onRemove, showDragHandle }: TotalWidgetProps) {
+export default function TotalWidget({ data, config, accent, onUpdate, onRemove, showDragHandle, readOnly }: TotalWidgetProps) {
   const { leads, tagGroups } = data;
   const { id, title, query } = config;
   const datePreset: DatePreset = query.datePreset ?? 'all_time';
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
-  const [configOpen, setConfigOpen] = useState(!query.metric);
+  const [configOpen, setConfigOpen] = useState(!query.metric && !readOnly);
 
   const criteria: CriteriaFilter = query.criteria ?? { conditions: [], logic: [] };
 
@@ -57,13 +58,13 @@ export default function TotalWidget({ data, config, accent, onUpdate, onRemove, 
       <div className="px-4 py-4">
         {/* Header row */}
         <div className="flex items-start gap-2">
-          {showDragHandle && (
+          {showDragHandle && !readOnly && (
             <div className="mt-0.5 flex-shrink-0 cursor-grab text-slate-300 hover:text-slate-400 active:cursor-grabbing">
               <GripIcon />
             </div>
           )}
           <div className="min-w-0 flex-1">
-            {editingTitle ? (
+            {!readOnly && editingTitle ? (
               <input
                 autoFocus
                 value={titleDraft}
@@ -75,6 +76,10 @@ export default function TotalWidget({ data, config, accent, onUpdate, onRemove, 
                 }}
                 className="w-full bg-transparent text-[11px] font-semibold uppercase tracking-wider text-slate-600 border-b border-slate-300 outline-none"
               />
+            ) : readOnly ? (
+              <span className="block truncate text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                {title}
+              </span>
             ) : (
               <button
                 onClick={() => { setTitleDraft(title); setEditingTitle(true); }}
@@ -86,26 +91,28 @@ export default function TotalWidget({ data, config, accent, onUpdate, onRemove, 
             )}
             <p className="mt-0.5 text-[10px] text-slate-400">{DATE_PRESET_LABELS[datePreset]}</p>
           </div>
-          <div className="flex items-center gap-0.5 flex-shrink-0">
-            <button
-              onClick={() => setConfigOpen((v) => !v)}
-              title="Configure"
-              className={`rounded p-1 transition-colors ${configOpen ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-            >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-              </svg>
-            </button>
-            <button
-              onClick={() => onRemove(id)}
-              title="Remove"
-              className="rounded p-1 text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-colors"
-            >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+          {!readOnly && (
+            <div className="flex items-center gap-0.5 flex-shrink-0">
+              <button
+                onClick={() => setConfigOpen((v) => !v)}
+                title="Configure"
+                className={`rounded p-1 transition-colors ${configOpen ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg>
+              </button>
+              <button
+                onClick={() => onRemove(id)}
+                title="Remove"
+                className="rounded p-1 text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-colors"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Count */}

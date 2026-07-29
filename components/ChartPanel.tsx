@@ -14,6 +14,7 @@ interface ChartPanelProps {
   onRemove: (id: string) => void;
   canRemove: boolean;
   showDragHandle?: boolean;
+  readOnly?: boolean;
 }
 
 const GROUP_OPTIONS: { label: string; value: GroupBy }[] = [
@@ -32,6 +33,7 @@ export default function ChartPanel({
   onRemove,
   canRemove,
   showDragHandle,
+  readOnly,
 }: ChartPanelProps) {
   const { tagGroups, leads, dateRange } = data;
   const { id, title, query } = config;
@@ -74,13 +76,13 @@ export default function ChartPanel({
 
       {/* Card header */}
       <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
-        {showDragHandle && (
+        {showDragHandle && !readOnly && (
           <div className="flex-shrink-0 cursor-grab text-slate-300 hover:text-slate-400 active:cursor-grabbing">
             <GripIcon />
           </div>
         )}
         <div className="flex-1 min-w-0">
-          {editingTitle ? (
+          {!readOnly && editingTitle ? (
             <input
               autoFocus
               value={titleDraft}
@@ -92,6 +94,10 @@ export default function ChartPanel({
               }}
               className="w-full rounded border border-slate-300 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-slate-600 outline-none focus:ring-2 focus:ring-blue-200"
             />
+          ) : readOnly ? (
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate block">
+              {title}
+            </span>
           ) : (
             <button
               onClick={() => { setTitleDraft(title); setEditingTitle(true); }}
@@ -108,16 +114,18 @@ export default function ChartPanel({
               {totalCount.toLocaleString()}
             </span>
           )}
-          <button
-            onClick={() => setConfigOpen((v) => !v)}
-            title="Configure"
-            className={`rounded p-1 transition-colors ${configOpen ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-          >
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-            </svg>
-          </button>
-          {canRemove && (
+          {!readOnly && (
+            <button
+              onClick={() => setConfigOpen((v) => !v)}
+              title="Configure"
+              className={`rounded p-1 transition-colors ${configOpen ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+              </svg>
+            </button>
+          )}
+          {canRemove && !readOnly && (
             <button
               onClick={() => onRemove(id)}
               title="Remove chart"

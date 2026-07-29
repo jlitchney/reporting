@@ -25,9 +25,10 @@ interface Props {
   onRemove: (id: string) => void;
   canRemove: boolean;
   showDragHandle?: boolean;
+  readOnly?: boolean;
 }
 
-export default function ColumnChartWidget({ data, config, accent, onUpdate, onRemove, canRemove, showDragHandle }: Props) {
+export default function ColumnChartWidget({ data, config, accent, onUpdate, onRemove, canRemove, showDragHandle, readOnly }: Props) {
   const { tagGroups, leads } = data;
   const { id, title, query } = config;
 
@@ -159,6 +160,7 @@ export default function ColumnChartWidget({ data, config, accent, onUpdate, onRe
       title={title}
       canRemove={canRemove}
       showDragHandle={showDragHandle}
+      readOnly={readOnly}
       onTitleSave={(t) => onUpdate(id, { title: t })}
       onRemove={() => onRemove(id)}
       colSpan={config.colSpan ?? 4}

@@ -8,6 +8,7 @@ interface WidgetShellProps {
   title: string;
   canRemove: boolean;
   showDragHandle?: boolean;
+  readOnly?: boolean;
   badge?: string | number;
   onTitleSave: (t: string) => void;
   onRemove: () => void;
@@ -25,6 +26,7 @@ export default function WidgetShell({
   title,
   canRemove,
   showDragHandle,
+  readOnly,
   badge,
   onTitleSave,
   onRemove,
@@ -48,13 +50,13 @@ export default function WidgetShell({
       <div className="h-1 w-full" style={{ backgroundColor: accent }} />
 
       <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
-        {showDragHandle && (
+        {showDragHandle && !readOnly && (
           <div className="flex-shrink-0 cursor-grab text-slate-300 hover:text-slate-400 active:cursor-grabbing">
             <GripIcon />
           </div>
         )}
         <div className="flex-1 min-w-0">
-          {editingTitle ? (
+          {!readOnly && editingTitle ? (
             <input
               autoFocus
               value={titleDraft}
@@ -66,6 +68,10 @@ export default function WidgetShell({
               }}
               className="w-full rounded border border-slate-300 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-slate-600 outline-none focus:ring-2 focus:ring-blue-200"
             />
+          ) : readOnly ? (
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate block">
+              {title}
+            </span>
           ) : (
             <button
               onClick={() => { setTitleDraft(title); setEditingTitle(true); }}
@@ -80,7 +86,7 @@ export default function WidgetShell({
           {badge != null && (
             <span className="mr-1 text-xs font-semibold text-slate-700">{badge}</span>
           )}
-          {hasConfig && (
+          {hasConfig && !readOnly && (
             <button
               onClick={() => setConfigOpen((v) => !v)}
               title="Configure"
@@ -91,7 +97,7 @@ export default function WidgetShell({
               </svg>
             </button>
           )}
-          {canRemove && (
+          {canRemove && !readOnly && (
             <button
               onClick={onRemove}
               title="Remove chart"
