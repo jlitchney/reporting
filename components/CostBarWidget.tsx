@@ -173,42 +173,48 @@ export default function CostBarWidget({
                 </button>
               </div>
               <div className="flex gap-1.5">
-                <select
-                  value={def.tagLabel}
-                  onChange={(e) => {
-                    const nd = [...metricDefs];
-                    nd[i] = { ...def, tagLabel: e.target.value };
-                    updateMetricDefs(nd);
-                  }}
-                  className="min-w-0 flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-[#1e3a6e]"
-                >
-                  <option value="">All Candidates</option>
-                  {tagGroups.map((g) => (
-                    <optgroup key={g.name} label={g.name}>
-                      {g.tags.map((t) => (
-                        <option key={t.label} value={t.label}>{t.tag}</option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-                <select
-                  value={def.dateField ?? ''}
-                  onChange={(e) => {
-                    const nd = [...metricDefs];
-                    nd[i] = { ...def, dateField: e.target.value || undefined };
-                    updateMetricDefs(nd);
-                  }}
-                  className="min-w-0 flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-[#1e3a6e]"
-                >
-                  <option value="">Creation date</option>
-                  {tagGroups.map((g) => (
-                    <optgroup key={g.name} label={g.name}>
-                      {g.tags.map((t) => (
-                        <option key={t.label} value={t.label}>{t.tag}</option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Metric</p>
+                  <select
+                    value={def.tagLabel}
+                    onChange={(e) => {
+                      const nd = [...metricDefs];
+                      nd[i] = { ...def, tagLabel: e.target.value };
+                      updateMetricDefs(nd);
+                    }}
+                    className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-[#1e3a6e]"
+                  >
+                    <option value="">All Candidates</option>
+                    {tagGroups.map((g) => (
+                      <optgroup key={g.name} label={g.name}>
+                        {g.tags.map((t) => (
+                          <option key={t.label} value={t.label}>{t.tag}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Date by</p>
+                  <select
+                    value={def.dateField ?? ''}
+                    onChange={(e) => {
+                      const nd = [...metricDefs];
+                      nd[i] = { ...def, dateField: e.target.value || undefined };
+                      updateMetricDefs(nd);
+                    }}
+                    className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-[#1e3a6e]"
+                  >
+                    <option value="">Creation date</option>
+                    {tagGroups.map((g) => (
+                      <optgroup key={g.name} label={g.name}>
+                        {g.tags.map((t) => (
+                          <option key={t.label} value={t.label}>{t.tag}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           ))}
