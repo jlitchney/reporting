@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import type { ParsedData, ChartConfig, ChartQuery, DatePreset } from '@/lib/types';
 import { processTagGroupChart, DATE_PRESET_LABELS } from '@/lib/dataProcessor';
 import AppearanceControls from './AppearanceControls';
+import SeriesColorPicker from './SeriesColorPicker';
 
 const DATE_PRESETS: DatePreset[] = ['all_time', 'this_year', 'this_month', 'last_30_days', 'last_90_days', 'custom'];
 const PIE_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#14b8a6', '#f97316', '#ec4899', '#06b6d4', '#84cc16'];
@@ -46,6 +47,9 @@ export default function PieChartWidget({
 
   const total = useMemo(() => chartData.reduce((sum, d) => sum + d.count, 0), [chartData]);
   const activeData = useMemo(() => chartData.filter((d) => d.count > 0), [chartData]);
+
+  const sliceColor = (period: string, idx: number) =>
+    config.seriesColors?.[period] ?? PIE_COLORS[idx % PIE_COLORS.length];
 
   return (
     <div className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200/80">
@@ -218,6 +222,21 @@ export default function PieChartWidget({
             </div>
           )}
 
+          {activeData.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-slate-100">
+              <SeriesColorPicker
+                series={activeData.map((d, idx) => ({
+                  id: d.period,
+                  name: d.period,
+                  color: sliceColor(d.period, idx),
+                }))}
+                onColorChange={(period, color) =>
+                  onUpdate(id, { seriesColors: { ...config.seriesColors, [period]: color } })
+                }
+              />
+            </div>
+          )}
+
           <div className="mt-3 pt-3 border-t border-slate-100">
             <AppearanceControls
               color={accent}
@@ -250,8 +269,8 @@ export default function PieChartWidget({
                   nameKey="period"
                   paddingAngle={2}
                 >
-                  {activeData.map((_, idx) => (
-                    <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
+                  {activeData.map((d, idx) => (
+                    <Cell key={idx} fill={sliceColor(d.period, idx)} />
                   ))}
                 </Pie>
                 <Tooltip
@@ -278,7 +297,7 @@ export default function PieChartWidget({
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span
                             className="h-2.5 w-2.5 flex-shrink-0 rounded-sm"
-                            style={{ backgroundColor: PIE_COLORS[idx % PIE_COLORS.length] }}
+                            style={{ backgroundColor: sliceColor(d.period, idx) }}
                           />
                           <span className="truncate text-slate-600">{d.period}</span>
                         </div>

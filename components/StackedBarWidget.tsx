@@ -13,6 +13,7 @@ import {
 import type { ParsedData, ChartConfig, ChartQuery, GroupBy, DatePreset, TagGroup } from '@/lib/types';
 import { processStackedBarChart, DATE_PRESET_LABELS } from '@/lib/dataProcessor';
 import WidgetShell from './WidgetShell';
+import SeriesColorPicker from './SeriesColorPicker';
 
 const DATE_PRESETS: DatePreset[] = ['all_time', 'this_year', 'this_month', 'last_30_days', 'last_90_days', 'custom'];
 const GROUP_OPTIONS: { label: string; value: GroupBy }[] = [
@@ -62,6 +63,9 @@ export default function StackedBarWidget({ data, config, accent, onUpdate, onRem
 
   const rotateLabels = chartData.length > 8;
   const chartHeight = config.chartHeight ?? 300;
+
+  const seriesColor = (tagLabel: string, idx: number) =>
+    config.seriesColors?.[tagLabel] ?? STACK_COLORS[idx % STACK_COLORS.length];
 
   const configPanel = (
     <div className="flex flex-wrap items-end gap-3">
@@ -122,6 +126,21 @@ export default function StackedBarWidget({ data, config, accent, onUpdate, onRem
           ))}
         </div>
       )}
+
+      {stackGroup && stackGroup.tags.length > 0 && (
+        <div className="w-full pt-2 border-t border-slate-100">
+          <SeriesColorPicker
+            series={stackGroup.tags.map((tag, idx) => ({
+              id: tag.label,
+              name: tag.tag,
+              color: seriesColor(tag.label, idx),
+            }))}
+            onColorChange={(tagLabel, color) =>
+              onUpdate(id, { seriesColors: { ...config.seriesColors, [tagLabel]: color } })
+            }
+          />
+        </div>
+      )}
     </div>
   );
 
@@ -152,7 +171,7 @@ export default function StackedBarWidget({ data, config, accent, onUpdate, onRem
                 <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<StackedTooltip />} cursor={{ fill: '#f1f5f9' }} />
                 {stackGroup?.tags.map((tag, idx) => (
-                  <Bar key={tag.label} dataKey={tag.label} name={tag.tag} stackId="s" fill={STACK_COLORS[idx % STACK_COLORS.length]} maxBarSize={48} radius={idx === (stackGroup.tags.length - 1) ? [4, 4, 0, 0] : [0, 0, 0, 0]} />
+                  <Bar key={tag.label} dataKey={tag.label} name={tag.tag} stackId="s" fill={seriesColor(tag.label, idx)} maxBarSize={48} radius={idx === (stackGroup.tags.length - 1) ? [4, 4, 0, 0] : [0, 0, 0, 0]} />
                 ))}
               </BarChart>
             </ResponsiveContainer>
@@ -160,7 +179,7 @@ export default function StackedBarWidget({ data, config, accent, onUpdate, onRem
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
                 {stackGroup.tags.map((tag, idx) => (
                   <div key={tag.label} className="flex items-center gap-1.5 text-xs text-slate-500">
-                    <span className="h-2.5 w-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: STACK_COLORS[idx % STACK_COLORS.length] }} />
+                    <span className="h-2.5 w-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: seriesColor(tag.label, idx) }} />
                     {tag.tag}
                   </div>
                 ))}

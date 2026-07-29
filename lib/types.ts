@@ -76,6 +76,7 @@ export interface ChartConfig {
   color?: string;
   colSpan?: 1 | 2 | 3 | 4;
   chartHeight?: number;
+  seriesColors?: Record<string, string>;
 }
 
 export interface ClientTab {
