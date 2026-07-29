@@ -35,7 +35,10 @@ export default function CriteriaBuilder({
   };
 
   const addCondition = () => {
-    onChange({ conditions: [...conditions, newCondition()], logic: [...logic, 'AND'] });
+    onChange({
+      conditions: [...conditions, newCondition()],
+      logic: conditions.length === 0 ? [] : [...logic, 'AND'],
+    });
   };
 
   const toggleLogic = (idx: number) => {

@@ -25,15 +25,18 @@ export function evaluateCriteria(lead: ParsedLead, criteria: CriteriaFilter): bo
   const { conditions, logic } = criteria;
   if (conditions.length === 0) return true;
 
+  // Clamp logic to expected length to guard against any stored data with a mismatch
+  const safeLogic = logic.slice(0, conditions.length - 1);
+
   const groups: FilterCondition[][] = [];
   let group: FilterCondition[] = [conditions[0]];
-  for (let i = 0; i < logic.length; i++) {
-    if (logic[i] === 'OR') { groups.push(group); group = [conditions[i + 1]]; }
+  for (let i = 0; i < safeLogic.length; i++) {
+    if (safeLogic[i] === 'OR') { groups.push(group); group = [conditions[i + 1]]; }
     else { group.push(conditions[i + 1]); }
   }
   groups.push(group);
 
-  return groups.some((g) => g.every((c) => testCondition(lead, c)));
+  return groups.some((g) => g.filter(Boolean).every((c) => testCondition(lead, c)));
 }
 
 function getPeriodStart(date: Date, groupBy: GroupBy): Date {
