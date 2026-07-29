@@ -154,7 +154,7 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
           {step === 'type' ? (
             <div>
               <p className="mb-4 text-sm text-slate-500">Choose a chart type</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 {TYPE_META.map(({ type: t, label, description, icon }) => (
                   <TypeCard key={t} title={label} description={description} onClick={() => pickType(t)}>{icon}</TypeCard>
                 ))}
@@ -339,11 +339,11 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
 
 function TypeCard({ title, description, children, onClick }: { title: string; description: string; children: React.ReactNode; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="flex flex-col items-start gap-3 rounded-xl border border-slate-200 p-4 text-left transition-all hover:border-[#1e3a6e] hover:shadow-sm active:scale-[0.98]">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">{children}</div>
+    <button onClick={onClick} className="flex flex-col items-start gap-2 rounded-xl border border-slate-200 p-3 text-left transition-all hover:border-[#1e3a6e] hover:shadow-sm active:scale-[0.98]">
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">{children}</div>
       <div>
-        <p className="text-sm font-semibold text-slate-700">{title}</p>
-        <p className="mt-0.5 text-xs text-slate-400 leading-snug">{description}</p>
+        <p className="text-xs font-semibold text-slate-700">{title}</p>
+        <p className="mt-0.5 text-[10px] text-slate-400 leading-snug">{description}</p>
       </div>
     </button>
   );
