@@ -147,7 +147,8 @@ export function countLeadsForTotal(
   metric: string | null,
   preset: DatePreset = 'all_time',
   customStart?: Date | null,
-  customEnd?: Date | null
+  customEnd?: Date | null,
+  filters: string[] = []
 ): number {
   const start = preset === 'custom' ? (customStart ?? null) : presetStart(preset);
   const end = preset === 'custom' ? (customEnd ?? null) : null;
@@ -158,6 +159,10 @@ export function countLeadsForTotal(
     if (metric && !lead.tags.get(metric)?.applied) return false;
     if (start && (!date || isBefore(date, start))) return false;
     if (end && date && isAfter(date, end)) return false;
+    for (const f of filters) {
+      if (f === metric) continue;
+      if (!lead.tags.get(f)?.applied) return false;
+    }
     return true;
   }).length;
 }

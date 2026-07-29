@@ -35,8 +35,8 @@ export default function TotalWidget({ data, config, accent, onUpdate, onRemove, 
   const [configOpen, setConfigOpen] = useState(!query.metric);
 
   const count = useMemo(
-    () => countLeadsForTotal(leads, query.metric, datePreset, query.startDate, query.endDate),
-    [leads, query.metric, datePreset, query.startDate, query.endDate]
+    () => countLeadsForTotal(leads, query.metric, datePreset, query.startDate, query.endDate, query.filters),
+    [leads, query.metric, datePreset, query.startDate, query.endDate, query.filters]
   );
 
   const updateQuery = (patch: Partial<typeof query>) =>
@@ -165,6 +165,53 @@ export default function TotalWidget({ data, config, accent, onUpdate, onRemove, 
                     onChange={(e) => updateQuery({ endDate: e.target.value ? new Date(e.target.value + 'T23:59:59') : null })}
                     className="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
                   />
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-slate-400">Filter by</label>
+              <select
+                value=""
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val && !query.filters.includes(val)) updateQuery({ filters: [...query.filters, val] });
+                }}
+                className="w-full rounded border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                <option value="">+ Add dimension</option>
+                {tagGroups.map((g) => {
+                  const available = g.tags.filter((t) => t.label !== query.metric && !query.filters.includes(t.label));
+                  if (!available.length) return null;
+                  return (
+                    <optgroup key={g.name} label={g.name}>
+                      {available.map((t) => (
+                        <option key={t.label} value={t.label}>{t.tag}</option>
+                      ))}
+                    </optgroup>
+                  );
+                })}
+              </select>
+              {query.filters.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {query.filters.map((f) => {
+                    const tagName = tagGroups.flatMap((g) => g.tags).find((t) => t.label === f)?.tag ?? f;
+                    return (
+                      <span
+                        key={f}
+                        className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
+                        style={{ backgroundColor: accent }}
+                      >
+                        {tagName}
+                        <button
+                          onClick={() => updateQuery({ filters: query.filters.filter((x) => x !== f) })}
+                          className="ml-0.5 opacity-70 hover:opacity-100"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    );
+                  })}
                 </div>
               )}
             </div>
