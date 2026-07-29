@@ -18,6 +18,7 @@ interface PieChartWidgetProps {
   onRemove: (id: string) => void;
   canRemove: boolean;
   showDragHandle?: boolean;
+  onDuplicate?: () => void;
   readOnly?: boolean;
 }
 

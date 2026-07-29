@@ -89,6 +89,20 @@ export default function Home() {
     [activeClientId, activeTab, updateTabCharts]
   );
 
+  const handleDuplicateChart = useCallback(
+    (chartId: string) => {
+      if (!activeClientId || !activeTab) return;
+      const configs = activeTab.chartConfigs;
+      const idx = configs.findIndex((c) => c.id === chartId);
+      if (idx === -1) return;
+      const copy = { ...configs[idx], id: `widget-${Date.now()}`, title: `${configs[idx].title} (copy)` };
+      const next = [...configs];
+      next.splice(idx + 1, 0, copy);
+      updateTabCharts(activeClientId, activeTab.id, next);
+    },
+    [activeClientId, activeTab, updateTabCharts]
+  );
+
   const handleAddFromModal = useCallback(
     (config: Omit<ChartConfig, 'id'>) => {
       if (!activeClientId || !activeTab) return;
@@ -258,6 +272,7 @@ export default function Home() {
                         accent={accentFor(w.id)}
                         onUpdate={handleUpdateChart}
                         onRemove={handleRemoveChart}
+                        onDuplicate={handleDuplicateChart}
                         showDragHandle
                       />
                     </div>
@@ -275,6 +290,7 @@ export default function Home() {
                       accent: accentFor(w.id),
                       onUpdate: handleUpdateChart,
                       onRemove: handleRemoveChart,
+                      onDuplicate: () => handleDuplicateChart(w.id),
                       canRemove: true as const,
                       showDragHandle: true as const,
                     };

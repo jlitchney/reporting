@@ -14,6 +14,7 @@ interface ChartPanelProps {
   onRemove: (id: string) => void;
   canRemove: boolean;
   showDragHandle?: boolean;
+  onDuplicate?: () => void;
   readOnly?: boolean;
 }
 
@@ -33,6 +34,7 @@ export default function ChartPanel({
   onRemove,
   canRemove,
   showDragHandle,
+  onDuplicate,
   readOnly,
 }: ChartPanelProps) {
   const { tagGroups, leads, dateRange } = data;
@@ -113,6 +115,17 @@ export default function ChartPanel({
             <span className="mr-1 text-xs font-semibold text-slate-700">
               {totalCount.toLocaleString()}
             </span>
+          )}
+          {onDuplicate && !readOnly && (
+            <button
+              onClick={onDuplicate}
+              title="Duplicate chart"
+              className="rounded p-1 text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-colors"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </button>
           )}
           {!readOnly && (
             <button

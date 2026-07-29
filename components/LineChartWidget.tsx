@@ -21,10 +21,11 @@ interface Props {
   onRemove: (id: string) => void;
   canRemove: boolean;
   showDragHandle?: boolean;
+  onDuplicate?: () => void;
   readOnly?: boolean;
 }
 
-export default function LineChartWidget({ data, config, accent, onUpdate, onRemove, canRemove, showDragHandle, readOnly }: Props) {
+export default function LineChartWidget({ data, config, accent, onUpdate, onRemove, canRemove, showDragHandle, onDuplicate, readOnly }: Props) {
   const { tagGroups, leads } = data;
   const { id, title, query } = config;
 
@@ -173,6 +174,7 @@ export default function LineChartWidget({ data, config, accent, onUpdate, onRemo
       title={title}
       canRemove={canRemove}
       showDragHandle={showDragHandle}
+      onDuplicate={onDuplicate}
       readOnly={readOnly}
       onTitleSave={(t) => onUpdate(id, { title: t })}
       onRemove={() => onRemove(id)}

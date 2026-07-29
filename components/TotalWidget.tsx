@@ -24,11 +24,12 @@ interface TotalWidgetProps {
   accent: string;
   onUpdate: (id: string, updates: Partial<ChartConfig>) => void;
   onRemove: (id: string) => void;
+  onDuplicate?: (id: string) => void;
   showDragHandle?: boolean;
   readOnly?: boolean;
 }
 
-export default function TotalWidget({ data, config, accent, onUpdate, onRemove, showDragHandle, readOnly }: TotalWidgetProps) {
+export default function TotalWidget({ data, config, accent, onUpdate, onRemove, onDuplicate, showDragHandle, readOnly }: TotalWidgetProps) {
   const { leads, tagGroups } = data;
   const { id, title, query } = config;
   const datePreset: DatePreset = query.datePreset ?? 'all_time';
@@ -93,6 +94,17 @@ export default function TotalWidget({ data, config, accent, onUpdate, onRemove, 
           </div>
           {!readOnly && (
             <div className="flex items-center gap-0.5 flex-shrink-0">
+              {onDuplicate && (
+                <button
+                  onClick={() => onDuplicate(id)}
+                  title="Duplicate chart"
+                  className="rounded p-1 text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-colors"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              )}
               <button
                 onClick={() => setConfigOpen((v) => !v)}
                 title="Configure"

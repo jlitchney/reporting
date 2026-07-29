@@ -11,6 +11,7 @@ interface WidgetShellProps {
   readOnly?: boolean;
   badge?: string | number;
   onTitleSave: (t: string) => void;
+  onDuplicate?: () => void;
   onRemove: () => void;
   configPanel?: ReactNode;
   children: ReactNode;
@@ -29,6 +30,7 @@ export default function WidgetShell({
   readOnly,
   badge,
   onTitleSave,
+  onDuplicate,
   onRemove,
   configPanel,
   children,
@@ -85,6 +87,17 @@ export default function WidgetShell({
         <div className="flex items-center gap-1 flex-shrink-0">
           {badge != null && (
             <span className="mr-1 text-xs font-semibold text-slate-700">{badge}</span>
+          )}
+          {onDuplicate && !readOnly && (
+            <button
+              onClick={onDuplicate}
+              title="Duplicate chart"
+              className="rounded p-1 text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-colors"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </button>
           )}
           {hasConfig && !readOnly && (
             <button
