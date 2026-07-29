@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { ParsedData, ChartConfig, ChartQuery, GroupBy, TagGroup } from '@/lib/types';
-import { processChartData, processTagGroupChart, countLeadsWithFilters } from '@/lib/dataProcessor';
+import type { ParsedData, ChartConfig, ChartQuery, GroupBy, TagGroup, DatePreset } from '@/lib/types';
+import { processChartData, processTagGroupChart, countLeadsWithFilters, DATE_PRESET_LABELS } from '@/lib/dataProcessor';
 import ReportBarChart from './ReportBarChart';
 
 interface ChartPanelProps {
@@ -20,6 +20,8 @@ const GROUP_OPTIONS: { label: string; value: GroupBy }[] = [
   { label: 'Month', value: 'month' },
   { label: 'Quarter', value: 'quarter' },
 ];
+
+const DATE_PRESETS: DatePreset[] = ['all_time', 'this_year', 'this_month', 'last_30_days', 'last_90_days', 'custom'];
 
 export default function ChartPanel({
   data,
@@ -50,9 +52,6 @@ export default function ChartPanel({
     if (!query.metric) return 0;
     return countLeadsWithFilters(leads, query.metric, query.filters);
   }, [leads, query.metric, query.filters]);
-
-  const defaultDateMin = dateRange.min.toISOString().slice(0, 10);
-  const defaultDateMax = dateRange.max.toISOString().slice(0, 10);
 
   return (
     <div className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200/80">
@@ -144,6 +143,17 @@ export default function ChartPanel({
                   </optgroup>
                 ))}
               </select>
+              {query.metric && (
+                <label className="mt-1 flex cursor-pointer items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={query.excludeRemoved ?? false}
+                    onChange={(e) => updateQuery({ excludeRemoved: e.target.checked })}
+                    className="h-3.5 w-3.5 accent-[#1e3a6e]"
+                  />
+                  <span className="text-[10px] text-slate-500">Exclude removed</span>
+                </label>
+              )}
             </div>
 
             {/* X axis mode */}
@@ -246,25 +256,37 @@ export default function ChartPanel({
             {/* Date range */}
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Date range</label>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="date"
-                  defaultValue={defaultDateMin}
-                  onChange={(e) =>
-                    updateQuery({ startDate: e.target.value ? new Date(e.target.value + 'T00:00:00') : null })
-                  }
-                  className="rounded border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
-                />
-                <span className="text-slate-400 text-xs">to</span>
-                <input
-                  type="date"
-                  defaultValue={defaultDateMax}
-                  onChange={(e) =>
-                    updateQuery({ endDate: e.target.value ? new Date(e.target.value + 'T23:59:59') : null })
-                  }
-                  className="rounded border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
-                />
+              <div className="flex flex-wrap gap-1">
+                {DATE_PRESETS.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => updateQuery({ datePreset: p, startDate: p !== 'custom' ? null : query.startDate, endDate: p !== 'custom' ? null : query.endDate })}
+                    className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                      (query.datePreset ?? 'all_time') === p ? 'text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                    style={(query.datePreset ?? 'all_time') === p ? { backgroundColor: accent } : {}}
+                  >
+                    {DATE_PRESET_LABELS[p]}
+                  </button>
+                ))}
               </div>
+              {query.datePreset === 'custom' && (
+                <div className="mt-1.5 flex items-center gap-1.5">
+                  <input
+                    type="date"
+                    value={query.startDate instanceof Date ? query.startDate.toISOString().slice(0, 10) : (query.startDate as unknown as string ?? '')}
+                    onChange={(e) => updateQuery({ startDate: e.target.value ? new Date(e.target.value + 'T00:00:00') : null })}
+                    className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
+                  />
+                  <span className="text-[10px] text-slate-400">to</span>
+                  <input
+                    type="date"
+                    value={query.endDate instanceof Date ? query.endDate.toISOString().slice(0, 10) : (query.endDate as unknown as string ?? '')}
+                    onChange={(e) => updateQuery({ endDate: e.target.value ? new Date(e.target.value + 'T23:59:59') : null })}
+                    className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
+                  />
+                </div>
+              )}
             </div>
           </div>
 

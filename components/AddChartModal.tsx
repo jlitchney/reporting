@@ -38,6 +38,7 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
   const [criteria, setCriteria] = useState<CriteriaFilter>({ conditions: [], logic: [] });
   const [groupBy, setGroupBy] = useState<GroupBy>('week');
   const [tagGroupAxis, setTagGroupAxis] = useState<string | null>(null);
+  const [excludeRemoved, setExcludeRemoved] = useState(false);
   const [titleOverride, setTitleOverride] = useState('');
 
   const derivedTitle = autoTitle(type, metric, data, tagGroupAxis);
@@ -52,6 +53,7 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
     setCustomEnd('');
     setCriteria({ conditions: [], logic: [] });
     setTagGroupAxis(null);
+    setExcludeRemoved(false);
     setStep('config');
   };
 
@@ -68,9 +70,10 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
         dateField: metric ?? 'created',
         groupBy,
         tagGroupAxis: type === 'bar' && tagGroupAxis ? tagGroupAxis : undefined,
+        excludeRemoved: type === 'bar' ? excludeRemoved : undefined,
         startDate,
         endDate,
-        ...(type === 'total' ? { datePreset } : {}),
+        datePreset,
       },
     });
     onClose();
@@ -156,7 +159,57 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
                     </optgroup>
                   ))}
                 </select>
+                {type === 'bar' && metric && (
+                  <label className="mt-2 flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={excludeRemoved}
+                      onChange={(e) => setExcludeRemoved(e.target.checked)}
+                      className="h-3.5 w-3.5 accent-[#1e3a6e]"
+                    />
+                    <span className="text-xs text-slate-500">Exclude removed</span>
+                  </label>
+                )}
               </div>
+
+              {/* Date range (both types) */}
+              {type === 'bar' && (
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Date range
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {DATE_PRESETS.map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setDatePreset(p)}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                          datePreset === p ? 'bg-[#1e3a6e] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {DATE_PRESET_LABELS[p]}
+                      </button>
+                    ))}
+                  </div>
+                  {datePreset === 'custom' && (
+                    <div className="mt-2.5 flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={customStart}
+                        onChange={(e) => setCustomStart(e.target.value)}
+                        className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#1e3a6e] focus:ring-2 focus:ring-[#1e3a6e]/20"
+                      />
+                      <span className="text-xs text-slate-400">to</span>
+                      <input
+                        type="date"
+                        value={customEnd}
+                        onChange={(e) => setCustomEnd(e.target.value)}
+                        className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#1e3a6e] focus:ring-2 focus:ring-[#1e3a6e]/20"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Date range (Total only) */}
               {type === 'total' && (

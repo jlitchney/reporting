@@ -91,15 +91,19 @@ function generateAllPeriods(from: Date, to: Date, groupBy: GroupBy): Date[] {
 }
 
 export function processChartData(leads: ParsedLead[], query: ChartQuery): ChartDataPoint[] {
-  const { metric, filters, dateField, groupBy, startDate, endDate } = query;
+  const { metric, filters, dateField, groupBy, startDate, endDate, datePreset, excludeRemoved } = query;
 
   if (!metric) return [];
+
+  const effectiveStart = datePreset && datePreset !== 'custom' ? presetStart(datePreset) : (startDate ?? null);
+  const effectiveEnd = datePreset === 'custom' ? (endDate ?? null) : null;
 
   const counts = new Map<number, number>();
 
   for (const lead of leads) {
     const metricTag = lead.tags.get(metric);
     if (!metricTag?.applied) continue;
+    if (excludeRemoved && metricTag.removed != null) continue;
 
     let groupDate: Date | null = null;
     if (dateField === 'created') {
@@ -109,8 +113,8 @@ export function processChartData(leads: ParsedLead[], query: ChartQuery): ChartD
     }
     if (!groupDate) continue;
 
-    if (startDate && isBefore(groupDate, startDate)) continue;
-    if (endDate && isAfter(groupDate, endDate)) continue;
+    if (effectiveStart && isBefore(groupDate, effectiveStart)) continue;
+    if (effectiveEnd && isAfter(groupDate, effectiveEnd)) continue;
 
     let passesFilters = true;
     for (const filter of filters) {
@@ -131,11 +135,11 @@ export function processChartData(leads: ParsedLead[], query: ChartQuery): ChartD
   if (counts.size === 0) return [];
 
   const allKeys = Array.from(counts.keys()).sort((a, b) => a - b);
-  const rangeStart = startDate
-    ? getPeriodStart(startDate, groupBy)
+  const rangeStart = effectiveStart
+    ? getPeriodStart(effectiveStart, groupBy)
     : new Date(allKeys[0]);
-  const rangeEnd = endDate
-    ? getPeriodStart(endDate, groupBy)
+  const rangeEnd = effectiveEnd
+    ? getPeriodStart(effectiveEnd, groupBy)
     : new Date(allKeys[allKeys.length - 1]);
 
   const periods = generateAllPeriods(rangeStart, rangeEnd, groupBy);
@@ -159,7 +163,9 @@ export function processTagGroupChart(
 
   return group.tags.map((tag) => {
     const count = leads.filter((lead) => {
-      if (!lead.tags.get(tag.label)?.applied) return false;
+      const tagEntry = lead.tags.get(tag.label);
+      if (!tagEntry?.applied) return false;
+      if (query.excludeRemoved && tagEntry.removed != null) return false;
       if (metric && !lead.tags.get(metric)?.applied) return false;
 
       if (startDate || endDate) {

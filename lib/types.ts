@@ -61,6 +61,7 @@ export interface ChartQuery {
   dateField: string;
   groupBy: GroupBy;
   tagGroupAxis?: string; // if set, X axis shows tags within this group instead of time periods
+  excludeRemoved?: boolean; // if true, only count leads where the metric tag has no Removed UTC
   startDate: Date | null;
   endDate: Date | null;
   datePreset?: DatePreset;
