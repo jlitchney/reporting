@@ -41,10 +41,11 @@ export default function ColumnChartWidget({ data, config, accent, onUpdate, onRe
 
   const tagGroupName = query.tagGroupAxis ?? tagGroups[0]?.name ?? '';
 
-  const chartData = useMemo(
-    () => tagGroupName ? processTagGroupChart(leads, tagGroups, tagGroupName, query) : [],
-    [leads, tagGroups, tagGroupName, query]
-  );
+  const chartData = useMemo(() => {
+    if (!tagGroupName) return [];
+    const raw = processTagGroupChart(leads, tagGroups, tagGroupName, query);
+    return query.filters.length > 0 ? raw.filter((d) => d.count > 0) : raw;
+  }, [leads, tagGroups, tagGroupName, query]);
 
   const chartHeight = config.chartHeight ?? Math.max(200, chartData.length * 36 + 40);
 
