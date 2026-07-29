@@ -127,6 +127,7 @@ export const DATE_PRESET_LABELS: Record<DatePreset, string> = {
   this_month: 'This Month',
   last_30_days: 'Last 30 Days',
   last_90_days: 'Last 90 Days',
+  custom: 'Custom Range',
 };
 
 function presetStart(preset: DatePreset): Date | null {
@@ -137,21 +138,26 @@ function presetStart(preset: DatePreset): Date | null {
     case 'this_month': return startOfMonth(now);
     case 'last_30_days': return subDays(now, 30);
     case 'last_90_days': return subDays(now, 90);
+    case 'custom': return null;
   }
 }
 
 export function countLeadsForTotal(
   leads: ParsedLead[],
   metric: string | null,
-  preset: DatePreset = 'all_time'
+  preset: DatePreset = 'all_time',
+  customStart?: Date | null,
+  customEnd?: Date | null
 ): number {
-  const start = presetStart(preset);
+  const start = preset === 'custom' ? (customStart ?? null) : presetStart(preset);
+  const end = preset === 'custom' ? (customEnd ?? null) : null;
   return leads.filter((lead) => {
     const date = metric
       ? lead.tags.get(metric)?.applied ?? null
       : lead.createdDate;
     if (metric && !lead.tags.get(metric)?.applied) return false;
     if (start && (!date || isBefore(date, start))) return false;
+    if (end && date && isAfter(date, end)) return false;
     return true;
   }).length;
 }

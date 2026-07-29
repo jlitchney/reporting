@@ -10,7 +10,7 @@ interface AddChartModalProps {
   onClose: () => void;
 }
 
-const DATE_PRESETS: DatePreset[] = ['all_time', 'this_year', 'this_month', 'last_30_days', 'last_90_days'];
+const DATE_PRESETS: DatePreset[] = ['all_time', 'this_year', 'this_month', 'last_30_days', 'last_90_days', 'custom'];
 const GROUP_OPTIONS: { label: string; value: GroupBy }[] = [
   { label: 'Week', value: 'week' },
   { label: 'Month', value: 'month' },
@@ -31,6 +31,8 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
   const [type, setType] = useState<WidgetType>('total');
   const [metric, setMetric] = useState<string | null>(null);
   const [datePreset, setDatePreset] = useState<DatePreset>('all_time');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
   const [groupBy, setGroupBy] = useState<GroupBy>('week');
   const [titleOverride, setTitleOverride] = useState('');
 
@@ -41,10 +43,15 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
     setType(t);
     setMetric(null);
     setTitleOverride('');
+    setDatePreset('all_time');
+    setCustomStart('');
+    setCustomEnd('');
     setStep('config');
   };
 
   const handleAdd = () => {
+    const startDate = datePreset === 'custom' && customStart ? new Date(customStart + 'T00:00:00') : null;
+    const endDate = datePreset === 'custom' && customEnd ? new Date(customEnd + 'T23:59:59') : null;
     onAdd({
       type,
       title: displayTitle,
@@ -53,8 +60,8 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
         filters: [],
         dateField: metric ?? 'created',
         groupBy,
-        startDate: null,
-        endDate: null,
+        startDate,
+        endDate,
         ...(type === 'total' ? { datePreset } : {}),
       },
     });
@@ -164,6 +171,23 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
                       </button>
                     ))}
                   </div>
+                  {datePreset === 'custom' && (
+                    <div className="mt-2.5 flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={customStart}
+                        onChange={(e) => setCustomStart(e.target.value)}
+                        className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#1e3a6e] focus:ring-2 focus:ring-[#1e3a6e]/20"
+                      />
+                      <span className="text-xs text-slate-400">to</span>
+                      <input
+                        type="date"
+                        value={customEnd}
+                        onChange={(e) => setCustomEnd(e.target.value)}
+                        className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#1e3a6e] focus:ring-2 focus:ring-[#1e3a6e]/20"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -38,7 +38,7 @@ export type GroupBy = 'week' | 'month' | 'quarter';
 
 export type WidgetType = 'total' | 'bar';
 
-export type DatePreset = 'all_time' | 'this_year' | 'this_month' | 'last_30_days' | 'last_90_days';
+export type DatePreset = 'all_time' | 'this_year' | 'this_month' | 'last_30_days' | 'last_90_days' | 'custom';
 
 export interface ChartQuery {
   metric: string | null;

@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import type { ParsedData, ChartConfig, DatePreset } from '@/lib/types';
 import { countLeadsForTotal, DATE_PRESET_LABELS } from '@/lib/dataProcessor';
 
-const PRESETS: DatePreset[] = ['all_time', 'this_year', 'this_month', 'last_30_days', 'last_90_days'];
+const PRESETS: DatePreset[] = ['all_time', 'this_year', 'this_month', 'last_30_days', 'last_90_days', 'custom'];
 
 function GripIcon() {
   return (
@@ -35,8 +35,8 @@ export default function TotalWidget({ data, config, accent, onUpdate, onRemove, 
   const [configOpen, setConfigOpen] = useState(!query.metric);
 
   const count = useMemo(
-    () => countLeadsForTotal(leads, query.metric, datePreset),
-    [leads, query.metric, datePreset]
+    () => countLeadsForTotal(leads, query.metric, datePreset, query.startDate, query.endDate),
+    [leads, query.metric, datePreset, query.startDate, query.endDate]
   );
 
   const updateQuery = (patch: Partial<typeof query>) =>
@@ -140,7 +140,7 @@ export default function TotalWidget({ data, config, accent, onUpdate, onRemove, 
                 {PRESETS.map((p) => (
                   <button
                     key={p}
-                    onClick={() => updateQuery({ datePreset: p })}
+                    onClick={() => updateQuery({ datePreset: p, startDate: p !== 'custom' ? null : query.startDate, endDate: p !== 'custom' ? null : query.endDate })}
                     className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
                       datePreset === p ? 'text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
@@ -150,6 +150,23 @@ export default function TotalWidget({ data, config, accent, onUpdate, onRemove, 
                   </button>
                 ))}
               </div>
+              {datePreset === 'custom' && (
+                <div className="mt-2 flex items-center gap-1.5">
+                  <input
+                    type="date"
+                    value={query.startDate ? query.startDate.toISOString().slice(0, 10) : ''}
+                    onChange={(e) => updateQuery({ startDate: e.target.value ? new Date(e.target.value + 'T00:00:00') : null })}
+                    className="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
+                  />
+                  <span className="text-[10px] text-slate-400">to</span>
+                  <input
+                    type="date"
+                    value={query.endDate ? query.endDate.toISOString().slice(0, 10) : ''}
+                    onChange={(e) => updateQuery({ endDate: e.target.value ? new Date(e.target.value + 'T23:59:59') : null })}
+                    className="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
