@@ -3,8 +3,10 @@ import type { ChartConfig, ClientTab } from './types';
 
 export interface SpendEntry {
   source: string;
-  weekOf: string;
+  startDate: string;  // 'YYYY-MM-DD'
+  endDate: string;    // 'YYYY-MM-DD'
   amount: number;
+  weekOf?: string;    // legacy — kept for backward compat
 }
 
 export interface ClientRecord {

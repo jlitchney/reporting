@@ -2,6 +2,7 @@ import {
   startOfWeek,
   startOfMonth,
   addWeeks,
+  addDays,
   addMonths,
   addQuarters,
   startOfQuarter,
@@ -11,6 +12,8 @@ import {
   isAfter,
   startOfYear,
   subDays,
+  differenceInDays,
+  parseISO,
 } from 'date-fns';
 import type { ParsedLead, ChartDataPoint, ChartQuery, GroupBy, DatePreset, CriteriaFilter, FilterCondition, TagGroup } from './types';
 import type { SpendEntry } from './redis';
@@ -394,6 +397,26 @@ function resolvePreset(preset?: DatePreset): Date | null {
   }
 }
 
+// Prorate spend entries that overlap with [weekStart, weekEndExclusive) by day count
+function spendForWeek(spendData: SpendEntry[], source: string, weekStart: Date, weekEndExclusive: Date): number {
+  let total = 0;
+  for (const entry of spendData) {
+    if (entry.source !== source) continue;
+    const entryStart = entry.startDate ? parseISO(entry.startDate) : (entry.weekOf ? parseISO(entry.weekOf) : null);
+    const entryEndInclusive = entry.endDate ? parseISO(entry.endDate) : (entry.weekOf ? addDays(parseISO(entry.weekOf), 6) : null);
+    if (!entryStart || !entryEndInclusive) continue;
+    const entryEndExclusive = addDays(entryEndInclusive, 1);
+    const overlapStart = entryStart > weekStart ? entryStart : weekStart;
+    const overlapEnd = entryEndExclusive < weekEndExclusive ? entryEndExclusive : weekEndExclusive;
+    if (overlapEnd <= overlapStart) continue;
+    const overlapDays = differenceInDays(overlapEnd, overlapStart);
+    const totalDays = differenceInDays(entryEndExclusive, entryStart);
+    if (totalDays <= 0) continue;
+    total += entry.amount * (overlapDays / totalDays);
+  }
+  return total;
+}
+
 export function computeCostMetrics(
   leads: ParsedLead[],
   spendData: SpendEntry[],
@@ -467,8 +490,6 @@ export function computeCostMetrics(
 
     if (weekApps.length === 0 && weekCandidates.length === 0) continue;
 
-    const weekOfStr = format(week, 'yyyy-MM-dd');
-
     const sources: CostSourceRow[] = sourceGroup.tags.map((tag) => {
       const appCount = weekApps.filter((lead) => {
         for (const t of sourceGroup.tags) {
@@ -486,7 +507,7 @@ export function computeCostMetrics(
         return false;
       }).length;
 
-      const spend = spendData.find((e) => e.source === tag.label && e.weekOf === weekOfStr)?.amount ?? 0;
+      const spend = spendForWeek(spendData, tag.label, week, nextWeek);
       const costPerApp = spend > 0 && appCount > 0 ? spend / appCount : null;
       const costPerCandidate = spend > 0 && candidateCount > 0 ? spend / candidateCount : null;
 
