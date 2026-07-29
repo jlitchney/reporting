@@ -28,8 +28,10 @@ export default function PieChartWidget({
   accent,
   onUpdate,
   onRemove,
+  onDuplicate,
   canRemove,
   showDragHandle,
+  readOnly,
 }: PieChartWidgetProps) {
   const { tagGroups, leads } = data;
   const { id, title, query } = config;
@@ -59,7 +61,7 @@ export default function PieChartWidget({
 
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
-        {showDragHandle && (
+        {showDragHandle && !readOnly && (
           <div className="flex-shrink-0 cursor-grab text-slate-300 hover:text-slate-400 active:cursor-grabbing">
             <GripIcon />
           </div>
@@ -88,6 +90,18 @@ export default function PieChartWidget({
           )}
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
+          {onDuplicate && !readOnly && (
+            <button
+              onClick={onDuplicate}
+              title="Duplicate chart"
+              className="rounded p-1 text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-colors"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </button>
+          )}
+          {!readOnly && (
           <button
             onClick={() => setConfigOpen((v) => !v)}
             title="Configure"
@@ -97,7 +111,8 @@ export default function PieChartWidget({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
             </svg>
           </button>
-          {canRemove && (
+          )}
+          {canRemove && !readOnly && (
             <button
               onClick={() => onRemove(id)}
               title="Remove chart"
