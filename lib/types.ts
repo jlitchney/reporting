@@ -70,6 +70,7 @@ export interface ChartQuery {
   costSourceGroup?: string;
   costMetric?: string;
   costView?: 'applications' | 'candidates' | 'both';
+  costGroupBy?: 'week' | 'source';
 }
 
 export interface ChartConfig {
