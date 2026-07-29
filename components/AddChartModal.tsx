@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import type { ParsedData, ChartConfig, WidgetType, DatePreset, GroupBy } from '@/lib/types';
+import type { ParsedData, ChartConfig, WidgetType, DatePreset, GroupBy, CriteriaFilter } from '@/lib/types';
 import { DATE_PRESET_LABELS } from '@/lib/dataProcessor';
+import CriteriaBuilder from './CriteriaBuilder';
 
 interface AddChartModalProps {
   data: ParsedData;
@@ -33,7 +34,7 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
   const [datePreset, setDatePreset] = useState<DatePreset>('all_time');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
-  const [filters, setFilters] = useState<string[]>([]);
+  const [criteria, setCriteria] = useState<CriteriaFilter>({ conditions: [], logic: [] });
   const [groupBy, setGroupBy] = useState<GroupBy>('week');
   const [titleOverride, setTitleOverride] = useState('');
 
@@ -47,7 +48,7 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
     setDatePreset('all_time');
     setCustomStart('');
     setCustomEnd('');
-    setFilters([]);
+    setCriteria({ conditions: [], logic: [] });
     setStep('config');
   };
 
@@ -59,7 +60,8 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
       title: displayTitle,
       query: {
         metric,
-        filters,
+        filters: [],
+        criteria: type === 'total' ? criteria : undefined,
         dateField: metric ?? 'created',
         groupBy,
         startDate,
@@ -193,54 +195,18 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
                 </div>
               )}
 
-              {/* Filters (Total only) */}
+              {/* Criteria (Total only) */}
               {type === 'total' && (
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Filter by
+                    Criteria
                   </label>
-                  <select
-                    value=""
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val && !filters.includes(val)) setFilters([...filters, val]);
-                    }}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#1e3a6e] focus:ring-2 focus:ring-[#1e3a6e]/20"
-                  >
-                    <option value="">+ Add dimension</option>
-                    {tagGroups.map((g) => {
-                      const available = g.tags.filter((t) => t.label !== metric && !filters.includes(t.label));
-                      if (!available.length) return null;
-                      return (
-                        <optgroup key={g.name} label={g.name}>
-                          {available.map((t) => (
-                            <option key={t.label} value={t.label}>{t.tag}</option>
-                          ))}
-                        </optgroup>
-                      );
-                    })}
-                  </select>
-                  {filters.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {filters.map((f) => {
-                        const tagName = tagGroups.flatMap((g) => g.tags).find((t) => t.label === f)?.tag ?? f;
-                        return (
-                          <span
-                            key={f}
-                            className="inline-flex items-center gap-1 rounded-full bg-[#1e3a6e] px-3 py-1 text-xs font-medium text-white"
-                          >
-                            {tagName}
-                            <button
-                              onClick={() => setFilters(filters.filter((x) => x !== f))}
-                              className="ml-0.5 opacity-70 hover:opacity-100"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  )}
+                  <CriteriaBuilder
+                    criteria={criteria}
+                    onChange={setCriteria}
+                    tagGroups={tagGroups}
+                    excludeTag={metric}
+                  />
                 </div>
               )}
 

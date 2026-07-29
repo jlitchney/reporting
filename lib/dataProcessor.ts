@@ -12,7 +12,29 @@ import {
   startOfYear,
   subDays,
 } from 'date-fns';
-import type { ParsedLead, ChartDataPoint, ChartQuery, GroupBy, DatePreset } from './types';
+import type { ParsedLead, ChartDataPoint, ChartQuery, GroupBy, DatePreset, CriteriaFilter, FilterCondition } from './types';
+
+function testCondition(lead: ParsedLead, cond: FilterCondition): boolean {
+  if (!cond.tag) return true;
+  const applied = lead.tags.get(cond.tag)?.applied != null;
+  return cond.operator === 'is_applied' ? applied : !applied;
+}
+
+// AND has higher precedence than OR: split by OR → each chunk is ANDed → any chunk passing = true
+export function evaluateCriteria(lead: ParsedLead, criteria: CriteriaFilter): boolean {
+  const { conditions, logic } = criteria;
+  if (conditions.length === 0) return true;
+
+  const groups: FilterCondition[][] = [];
+  let group: FilterCondition[] = [conditions[0]];
+  for (let i = 0; i < logic.length; i++) {
+    if (logic[i] === 'OR') { groups.push(group); group = [conditions[i + 1]]; }
+    else { group.push(conditions[i + 1]); }
+  }
+  groups.push(group);
+
+  return groups.some((g) => g.every((c) => testCondition(lead, c)));
+}
 
 function getPeriodStart(date: Date, groupBy: GroupBy): Date {
   switch (groupBy) {
@@ -148,17 +170,17 @@ export function countLeadsForTotal(
   preset: DatePreset = 'all_time',
   customStart?: Date | null,
   customEnd?: Date | null,
-  filters: string[] = []
+  filters: string[] = [],
+  criteria?: CriteriaFilter
 ): number {
   const start = preset === 'custom' ? (customStart ?? null) : presetStart(preset);
   const end = preset === 'custom' ? (customEnd ?? null) : null;
   return leads.filter((lead) => {
-    const date = metric
-      ? lead.tags.get(metric)?.applied ?? null
-      : lead.createdDate;
+    const date = metric ? lead.tags.get(metric)?.applied ?? null : lead.createdDate;
     if (metric && !lead.tags.get(metric)?.applied) return false;
     if (start && (!date || isBefore(date, start))) return false;
     if (end && date && isAfter(date, end)) return false;
+    if (criteria && criteria.conditions.length > 0) return evaluateCriteria(lead, criteria);
     for (const f of filters) {
       if (f === metric) continue;
       if (!lead.tags.get(f)?.applied) return false;

@@ -36,6 +36,20 @@ export interface ChartDataPoint {
 
 export type GroupBy = 'week' | 'month' | 'quarter';
 
+export type FilterOperator = 'is_applied' | 'is_not_applied';
+export type FilterLogicOp = 'AND' | 'OR';
+
+export interface FilterCondition {
+  id: string;
+  tag: string;
+  operator: FilterOperator;
+}
+
+export interface CriteriaFilter {
+  conditions: FilterCondition[];
+  logic: FilterLogicOp[]; // length = conditions.length - 1; logic[i] connects condition[i] and condition[i+1]
+}
+
 export type WidgetType = 'total' | 'bar';
 
 export type DatePreset = 'all_time' | 'this_year' | 'this_month' | 'last_30_days' | 'last_90_days' | 'custom';
@@ -43,6 +57,7 @@ export type DatePreset = 'all_time' | 'this_year' | 'this_month' | 'last_30_days
 export interface ChartQuery {
   metric: string | null;
   filters: string[];
+  criteria?: CriteriaFilter;
   dateField: string;
   groupBy: GroupBy;
   startDate: Date | null;
