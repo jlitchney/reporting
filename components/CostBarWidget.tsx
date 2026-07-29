@@ -78,8 +78,10 @@ export default function CostBarWidget({
   const updateQuery = (patch: Partial<ChartQuery>) => onUpdate(id, { query: { ...query, ...patch } });
 
   const sourceGroup = query.costSourceGroup ?? tagGroups[0]?.name ?? '';
+  const sourceGroupObj = tagGroups.find((g) => g.name === sourceGroup);
   const datePreset = query.datePreset ?? 'all_time';
   const metricDefs = getEffectiveMetricDefs(config);
+  const sourceFilters = query.costSourceFilters ?? [];
 
   const updateMetricDefs = (defs: CostMetricDef[]) =>
     updateQuery({ costMetricDefs: defs, costMetric: undefined });
@@ -102,7 +104,7 @@ export default function CostBarWidget({
       tagGroups,
       sourceGroup,
       metricDefs,
-      { datePreset: query.datePreset, startDate: query.startDate, endDate: query.endDate, excludeRemoved: query.excludeRemoved, dateField: query.dateField },
+      { datePreset: query.datePreset, startDate: query.startDate, endDate: query.endDate, excludeRemoved: query.excludeRemoved, dateField: query.dateField, costSourceFilters: sourceFilters },
     );
     return rows
       .map((row) => {
@@ -238,12 +240,46 @@ export default function CostBarWidget({
         <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Source group</label>
         <select
           value={sourceGroup}
-          onChange={(e) => updateQuery({ costSourceGroup: e.target.value || undefined })}
+          onChange={(e) => updateQuery({ costSourceGroup: e.target.value || undefined, costSourceFilters: [] })}
           className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-[#1e3a6e]"
         >
           {tagGroups.map((g) => <option key={g.name} value={g.name}>{g.name}</option>)}
         </select>
       </div>
+
+      {/* Source filter */}
+      {sourceGroupObj && sourceGroupObj.tags.length > 0 && (
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Source filter</label>
+          <div className="flex flex-wrap gap-1">
+            <button
+              onClick={() => updateQuery({ costSourceFilters: [] })}
+              className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${sourceFilters.length === 0 ? 'text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              style={sourceFilters.length === 0 ? { backgroundColor: accent } : {}}
+            >
+              All
+            </button>
+            {sourceGroupObj.tags.map((t) => {
+              const active = sourceFilters.includes(t.label);
+              return (
+                <button
+                  key={t.label}
+                  onClick={() => {
+                    const next = active
+                      ? sourceFilters.filter((l) => l !== t.label)
+                      : [...sourceFilters, t.label];
+                    updateQuery({ costSourceFilters: next });
+                  }}
+                  className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${active ? 'text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                  style={active ? { backgroundColor: accent } : {}}
+                >
+                  {t.tag}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Date range */}
       <div>

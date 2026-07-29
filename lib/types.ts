@@ -79,6 +79,7 @@ export interface ChartQuery {
   costGroupBy?: 'week' | 'source';
   costMetricDefs?: CostMetricDef[];
   costSelectedMetric?: string;               // bar chart: which metric name to display
+  costSourceFilters?: string[];              // tag labels within source group to include; empty/absent = all
 }
 
 export interface ChartConfig {

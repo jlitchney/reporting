@@ -419,10 +419,17 @@ export function computeCostMetrics(
   tagGroups: TagGroup[],
   sourceGroupName: string,
   metricDefs: CostMetricDef[],
-  query: Pick<ChartQuery, 'datePreset' | 'startDate' | 'endDate' | 'excludeRemoved' | 'dateField'>
+  query: Pick<ChartQuery, 'datePreset' | 'startDate' | 'endDate' | 'excludeRemoved' | 'dateField' | 'costSourceFilters'>
 ): CostMetricRow[] {
   const sourceGroup = tagGroups.find((g) => g.name === sourceGroupName);
   if (!sourceGroup || metricDefs.length === 0) return [];
+
+  // Which source tags are active (empty/absent = all)
+  const activeSourceTags =
+    query.costSourceFilters && query.costSourceFilters.length > 0
+      ? sourceGroup.tags.filter((t) => query.costSourceFilters!.includes(t.label))
+      : sourceGroup.tags;
+  const filteringActive = query.costSourceFilters && query.costSourceFilters.length > 0;
 
   const effectiveStart = query.datePreset && query.datePreset !== 'custom'
     ? resolvePreset(query.datePreset)
@@ -494,7 +501,7 @@ export function computeCostMetrics(
       return null;
     };
 
-    const sources: CostSourceRow[] = sourceGroup.tags.map((tag) => {
+    const sources: CostSourceRow[] = activeSourceTags.map((tag) => {
       const counts: Record<string, number> = {};
       for (const def of metricDefs) {
         counts[def.name] = leads.filter(
@@ -526,7 +533,8 @@ export function computeCostMetrics(
     const totalCounts: Record<string, number> = {};
     const totalCostPer: Record<string, number | null> = {};
     for (const def of metricDefs) {
-      const c = sources.reduce((s, r) => s + (r.counts[def.name] ?? 0), 0) + (organicCounts[def.name] ?? 0);
+      const organic = filteringActive ? 0 : (organicCounts[def.name] ?? 0);
+      const c = sources.reduce((s, r) => s + (r.counts[def.name] ?? 0), 0) + organic;
       totalCounts[def.name] = c;
       totalCostPer[def.name] = totalSpend > 0 && c > 0 ? totalSpend / c : null;
     }
