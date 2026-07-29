@@ -16,8 +16,13 @@ import type { ParsedLead, ChartDataPoint, ChartQuery, GroupBy, DatePreset, Crite
 
 function testCondition(lead: ParsedLead, cond: FilterCondition): boolean {
   if (!cond.tag) return true;
-  const applied = lead.tags.get(cond.tag)?.applied != null;
-  return cond.operator === 'is_applied' ? applied : !applied;
+  const entry = lead.tags.get(cond.tag);
+  const op = cond.operator as string; // cast so legacy values ('is_applied', 'is_not_applied') don't break
+  if (op === 'currently_applied') return entry?.applied != null && entry?.removed == null;
+  if (op === 'removed') return entry?.removed != null;
+  if (op === 'never_applied' || op === 'is_not_applied') return entry?.applied == null;
+  // 'ever_applied' | 'is_applied' (legacy) | fallback
+  return entry?.applied != null;
 }
 
 // AND has higher precedence than OR: split by OR → each chunk is ANDed → any chunk passing = true

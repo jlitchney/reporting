@@ -11,7 +11,7 @@ interface CriteriaBuilderProps {
 }
 
 function newCondition(): FilterCondition {
-  return { id: `c-${Date.now()}-${Math.random().toString(36).slice(2)}`, tag: '', operator: 'is_applied' };
+  return { id: `c-${Date.now()}-${Math.random().toString(36).slice(2)}`, tag: '', operator: 'currently_applied' };
 }
 
 export default function CriteriaBuilder({
@@ -102,8 +102,10 @@ export default function CriteriaBuilder({
               onChange={(e) => updateCondition(idx, { operator: e.target.value as FilterOperator })}
               className={`flex-shrink-0 ${selectCls}`}
             >
-              <option value="is_applied">is applied</option>
-              <option value="is_not_applied">is not applied</option>
+              <option value="currently_applied">currently applied</option>
+              <option value="ever_applied">ever applied</option>
+              <option value="removed">removed</option>
+              <option value="never_applied">never applied</option>
             </select>
 
             <button

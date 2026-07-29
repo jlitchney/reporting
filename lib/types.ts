@@ -36,7 +36,7 @@ export interface ChartDataPoint {
 
 export type GroupBy = 'week' | 'month' | 'quarter';
 
-export type FilterOperator = 'is_applied' | 'is_not_applied';
+export type FilterOperator = 'currently_applied' | 'ever_applied' | 'removed' | 'never_applied';
 export type FilterLogicOp = 'AND' | 'OR';
 
 export interface FilterCondition {
