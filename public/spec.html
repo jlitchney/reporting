@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campaign Reports — Developer Spec</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #1e293b;
+      background: #f8fafc;
+    }
+
+    .layout { display: flex; min-height: 100vh; }
+
+    /* Sidebar nav */
+    nav {
+      width: 220px;
+      flex-shrink: 0;
+      background: #1e3a6e;
+      color: #fff;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 24px 0;
+    }
+    nav .logo {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 20px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 16px;
+    }
+    nav .logo .icon {
+      background: rgba(255,255,255,0.15);
+      border-radius: 6px;
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+    }
+    nav .logo span { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; }
+    nav .section-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase; color: rgba(255,255,255,0.35);
+      padding: 0 20px; margin-bottom: 6px;
+    }
+    nav a {
+      display: block; padding: 7px 20px;
+      color: rgba(255,255,255,0.65); text-decoration: none;
+      font-size: 13px; transition: background 0.15s, color 0.15s;
+      border-left: 2px solid transparent;
+    }
+    nav a:hover { background: rgba(255,255,255,0.08); color: #fff; }
+    nav a.active { background: rgba(255,255,255,0.12); color: #fff; border-left-color: #60a5fa; }
+    nav .divider { border-top: 1px solid rgba(255,255,255,0.08); margin: 12px 0; }
+
+    /* Main content */
+    main {
+      flex: 1;
+      max-width: 860px;
+      padding: 48px 56px;
+    }
+
+    h1 { font-size: 28px; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+    .subtitle { color: #64748b; font-size: 15px; margin-bottom: 40px; }
+
+    h2 {
+      font-size: 18px; font-weight: 700; color: #0f172a;
+      margin: 48px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    h3 { font-size: 14px; font-weight: 700; color: #334155; margin: 24px 0 8px; }
+    h4 { font-size: 13px; font-weight: 600; color: #475569; margin: 16px 0 6px; }
+
+    p { margin-bottom: 12px; color: #334155; }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 13px; }
+    th { background: #f1f5f9; text-align: left; padding: 8px 12px; font-weight: 600; color: #475569; border: 1px solid #e2e8f0; }
+    td { padding: 7px 12px; border: 1px solid #e2e8f0; color: #334155; vertical-align: top; }
+    tr:nth-child(even) td { background: #f8fafc; }
+
+    /* Code */
+    pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 16px 20px;
+      overflow-x: auto;
+      font-size: 12.5px;
+      line-height: 1.7;
+      margin: 12px 0 20px;
+    }
+    code {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+    p code, li code, td code {
+      background: #f1f5f9;
+      color: #e11d48;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 12px;
+    }
+    .kw { color: #7dd3fc; }
+    .str { color: #86efac; }
+    .cm { color: #64748b; }
+    .ty { color: #fde68a; }
+    .fn { color: #c4b5fd; }
+    .num { color: #fb923c; }
+
+    /* Callouts */
+    .callout {
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin: 12px 0 20px;
+      font-size: 13px;
+    }
+    .callout.info { background: #eff6ff; border-left: 3px solid #3b82f6; color: #1e40af; }
+    .callout.warn { background: #fffbeb; border-left: 3px solid #f59e0b; color: #92400e; }
+    .callout strong { font-weight: 600; }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-right: 4px;
+    }
+    .badge.get { background: #dcfce7; color: #15803d; }
+    .badge.post { background: #dbeafe; color: #1d4ed8; }
+    .badge.patch { background: #fef9c3; color: #854d0e; }
+    .badge.put { background: #ede9fe; color: #6d28d9; }
+    .badge.delete { background: #fee2e2; color: #b91c1c; }
+
+    /* Widget type grid */
+    .widget-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin: 12px 0 24px; }
+    .widget-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .widget-card .wname { font-weight: 700; font-size: 13px; color: #0f172a; margin-bottom: 4px; }
+    .widget-card .wtype { font-size: 11px; color: #94a3b8; font-family: monospace; margin-bottom: 6px; }
+    .widget-card .wdesc { font-size: 12px; color: #64748b; }
+
+    ul, ol { padding-left: 20px; margin-bottom: 12px; }
+    li { margin-bottom: 4px; color: #334155; }
+
+    .toc-entry { margin-bottom: 3px; }
+
+    @media (max-width: 768px) {
+      .layout { flex-direction: column; }
+      nav { width: 100%; height: auto; position: static; }
+      main { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- Sidebar -->
+  <nav>
+    <div class="logo">
+      <div class="icon">CR</div>
+      <span>Campaign Reports</span>
+    </div>
+    <div class="section-label">Contents</div>
+    <a href="#overview">Overview</a>
+    <a href="#stack">Tech Stack</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#data-model">Data Model</a>
+    <div class="divider"></div>
+    <a href="#csv-format">CSV Format</a>
+    <a href="#api">API Routes</a>
+    <a href="#storage">Storage</a>
+    <div class="divider"></div>
+    <a href="#state">State Management</a>
+    <a href="#widgets">Widget System</a>
+    <a href="#widget-types">Widget Types</a>
+    <a href="#data-processing">Data Processing</a>
+    <div class="divider"></div>
+    <a href="#interactions">Interactions</a>
+    <a href="#adding-widgets">Adding Widgets</a>
+  </nav>
+
+  <!-- Main -->
+  <main>
+    <h1>Campaign Reports — Developer Spec</h1>
+    <p class="subtitle">Internal reference for the AllStar Talent campaign candidate reporting dashboard.</p>
+
+    <!-- OVERVIEW -->
+    <h2 id="overview">Overview</h2>
+    <p>
+      Campaign Reports is a multi-client reporting dashboard that ingests campaign CSV exports and renders
+      configurable, interactive charts. Each client has their own CSV data, multiple named tabs, and any
+      number of independently configured widgets per tab. All widget configuration (chart type, filters,
+      date range, color, size) is persisted server-side.
+    </p>
+    <p>Key capabilities:</p>
+    <ul>
+      <li>Upload or refresh a CSV for any client at any time</li>
+      <li>Multiple report tabs per client, each independently configured</li>
+      <li>8 widget types: Total count, Bar chart, Line chart, Column chart, Stacked bar, Pie chart, Table, Funnel</li>
+      <li>Per-widget: accent color, width (¼/½/¾/Full), chart height (S/M/L/XL), per-series colors</li>
+      <li>Drag-and-drop reordering of all widgets</li>
+      <li>Filter by tag, date range (preset or custom), exclude-removed toggle</li>
+    </ul>
+
+    <!-- TECH STACK -->
+    <h2 id="stack">Tech Stack</h2>
+    <table>
+      <tr><th>Layer</th><th>Technology</th><th>Notes</th></tr>
+      <tr><td>Framework</td><td>Next.js 16 (App Router)</td><td>Deployed on Vercel</td></tr>
+      <tr><td>Language</td><td>TypeScript</td><td>Strict mode</td></tr>
+      <tr><td>Styling</td><td>Tailwind CSS v4</td><td>Utility-first, no component library</td></tr>
+      <tr><td>Charts</td><td>Recharts</td><td>Bar, Line, Pie, Stacked Bar</td></tr>
+      <tr><td>CSV parsing</td><td>PapaParse</td><td>Client-side parse after fetch</td></tr>
+      <tr><td>CSV storage</td><td>Vercel Blob (private)</td><td>One blob per client</td></tr>
+      <tr><td>Config storage</td><td>Upstash Redis (KV)</td><td>Client metadata + chart configs</td></tr>
+      <tr><td>Date math</td><td>date-fns</td><td>Period grouping, presets</td></tr>
+    </table>
+
+    <!-- ARCHITECTURE -->
+    <h2 id="architecture">Architecture</h2>
+    <p>
+      The app is a single-page client application with thin Next.js API routes. The browser holds all
+      chart state in React; API routes handle CSV persistence and config storage only.
+    </p>
+<pre><code><span class="cm">┌─────────────────────────────────────────────────────┐
+│                    Browser (React)                  │
+│                                                     │
+│  app/page.tsx                                       │
+│    └─ useClients() hook  ──── fetch /api/clients    │
+│         │                                           │
+│         ├─ Sidebar (client list + add)              │
+│         ├─ TabBar  (tabs per client)                │
+│         └─ Widget grid                              │
+│              ├─ TotalWidget                         │
+│              ├─ ChartPanel (bar, line)              │
+│              ├─ LineChartWidget                     │
+│              ├─ ColumnChartWidget                   │
+│              ├─ StackedBarWidget                    │
+│              ├─ PieChartWidget                      │
+│              ├─ TableWidget                         │
+│              └─ FunnelWidget                        │
+│                                                     │
+└────────────────────────┬────────────────────────────┘
+                         │ REST
+        ┌────────────────▼────────────────┐
+        │      Next.js API Routes         │
+        │  POST   /api/clients            │  ← upload new client CSV
+        │  GET    /api/clients            │  ← list all clients
+        │  GET    /api/clients/[id]       │  ← get single client config
+        │  PATCH  /api/clients/[id]       │  ← save name / tabs / configs
+        │  DELETE /api/clients/[id]       │  ← remove client
+        │  PUT    /api/clients/[id]/csv   │  ← replace CSV
+        │  GET    /api/clients/[id]/csv   │  ← stream CSV for parsing
+        └────────┬────────────────┬───────┘
+                 │                │
+        Vercel Blob         Upstash Redis
+        (private CSV)       (client metadata
+                             + chart configs)
+</span></code></pre>
+
+    <div class="callout info">
+      <strong>No SSR for chart data.</strong> CSV files are fetched client-side, parsed in the browser,
+      and never sent back to the server. The parsed <code>ParsedData</code> object lives only in React state
+      and a <code>Map</code>-based in-memory cache per session.
+    </div>
+
+    <!-- DATA MODEL -->
+    <h2 id="data-model">Data Model</h2>
+    <h3>Core Types (<code>lib/types.ts</code>)</h3>
+
+    <h4>ParsedLead</h4>
+<pre><code><span class="kw">interface</span> <span class="ty">ParsedLead</span> {
+  leadId:       <span class="ty">string</span>;
+  fullName:     <span class="ty">string</span>;
+  assigned:     <span class="ty">string</span>;
+  createdDate:  <span class="ty">Date</span> | <span class="kw">null</span>;
+  activityDate: <span class="ty">Date</span> | <span class="kw">null</span>;
+  <span class="cm">// key = "TagGroup > Tag" label; value = applied/removed timestamps</span>
+  tags: <span class="ty">Map</span>&lt;<span class="ty">string</span>, { applied: <span class="ty">Date</span> | <span class="kw">null</span>; removed: <span class="ty">Date</span> | <span class="kw">null</span> }&gt;;
+}</code></pre>
+
+    <h4>ChartConfig</h4>
+<pre><code><span class="kw">interface</span> <span class="ty">ChartConfig</span> {
+  id:            <span class="ty">string</span>;               <span class="cm">// "widget-{timestamp}"</span>
+  type?:         <span class="ty">WidgetType</span>;
+  title:         <span class="ty">string</span>;
+  query:         <span class="ty">ChartQuery</span>;
+  color?:        <span class="ty">string</span>;               <span class="cm">// hex accent color</span>
+  colSpan?:      <span class="num">1</span> | <span class="num">2</span> | <span class="num">3</span> | <span class="num">4</span>;         <span class="cm">// grid columns (4-col grid = ¼/½/¾/Full)</span>
+  chartHeight?:  <span class="ty">number</span>;              <span class="cm">// px: 200/300/400/500</span>
+  seriesColors?: <span class="ty">Record</span>&lt;<span class="ty">string</span>, <span class="ty">string</span>&gt;; <span class="cm">// tagLabel → hex (pie/stacked bar)</span>
+}</code></pre>
+
+    <h4>ChartQuery</h4>
+<pre><code><span class="kw">interface</span> <span class="ty">ChartQuery</span> {
+  metric:        <span class="ty">string</span> | <span class="kw">null</span>;  <span class="cm">// tag label, "__all__" for all candidates, or null (unset)</span>
+  filters:       <span class="ty">string</span>[];        <span class="cm">// tag labels that must be applied</span>
+  criteria?:     <span class="ty">CriteriaFilter</span>;  <span class="cm">// advanced AND/OR filter (Total widget)</span>
+  dateField:     <span class="ty">string</span>;          <span class="cm">// "created" or a tag label</span>
+  groupBy:       <span class="ty">GroupBy</span>;         <span class="cm">// "week" | "month" | "quarter"</span>
+  tagGroupAxis?: <span class="ty">string</span>;          <span class="cm">// tag group name → X axis shows tags, not time</span>
+  excludeRemoved?: <span class="ty">boolean</span>;      <span class="cm">// only count if tag has no Removed date</span>
+  startDate:     <span class="ty">Date</span> | <span class="kw">null</span>;
+  endDate:       <span class="ty">Date</span> | <span class="kw">null</span>;
+  datePreset?:   <span class="ty">DatePreset</span>;      <span class="cm">// "all_time" | "this_year" | "this_month" | "last_30_days" | "last_90_days" | "custom"</span>
+  funnelStages?: <span class="ty">string</span>[];        <span class="cm">// ordered tag labels (Funnel widget)</span>
+}</code></pre>
+
+    <h4>StoredClient</h4>
+<pre><code><span class="kw">interface</span> <span class="ty">StoredClient</span> {
+  id:          <span class="ty">string</span>;       <span class="cm">// "client-{timestamp}"</span>
+  name:        <span class="ty">string</span>;
+  blobUrl:     <span class="ty">string</span>;       <span class="cm">// Vercel Blob private URL (never sent to browser)</span>
+  tabs:        <span class="ty">ClientTab</span>[];
+  lastUpdated: <span class="ty">string</span>;       <span class="cm">// ISO timestamp</span>
+}
+
+<span class="kw">interface</span> <span class="ty">ClientTab</span> {
+  id:           <span class="ty">string</span>;
+  name:         <span class="ty">string</span>;
+  chartConfigs: <span class="ty">ChartConfig</span>[];
+}</code></pre>
+
+    <!-- CSV FORMAT -->
+    <h2 id="csv-format">CSV Format</h2>
+    <p>
+      The app expects a CSV export from a campaign management system (e.g. Zoho Recruit). It auto-detects
+      tag columns by matching column header patterns.
+    </p>
+
+    <h3>Required columns</h3>
+    <table>
+      <tr><th>Column name (case-insensitive)</th><th>Field</th></tr>
+      <tr><td><code>Candidate ID</code> / <code>Lead ID</code></td><td>Unique identifier</td></tr>
+      <tr><td><code>Candidate Name</code> / <code>Full Name</code></td><td>Display name</td></tr>
+      <tr><td><code>Assigned To</code></td><td>Recruiter assignment</td></tr>
+      <tr><td><code>Created Time</code></td><td>Record creation date</td></tr>
+    </table>
+
+    <h3>Tag columns (auto-detected)</h3>
+    <p>Tag columns are identified by these header patterns:</p>
+<pre><code><span class="cm">// Applied date columns:</span>
+<span class="str">"TagGroup > Tag Applied"</span>
+<span class="str">"TagGroup > Tag Applied UTC"</span>
+<span class="str">"TagGroup&gt;Tag Applied UTC"</span>   <span class="cm">// no spaces around &gt;</span>
+
+<span class="cm">// Corresponding removed date columns (same name with "Removed" suffix):</span>
+<span class="str">"TagGroup > Tag Removed UTC"</span></code></pre>
+
+    <p>
+      Each matched pair becomes one <code>TagColumn</code> entry. Tags with the same group prefix are
+      automatically grouped into a <code>TagGroup</code>. The group name and tag name are extracted
+      from the header, and a stable <code>label</code> (<code>"TagGroup &gt; Tag"</code>) is used as
+      the internal key throughout the app.
+    </p>
+
+    <h3>Date parsing</h3>
+    <p>The CSV parser handles these date formats:</p>
+    <ul>
+      <li>ISO 8601 with time: <code>2025-06-12T01:26:50Z</code></li>
+      <li>ISO date-only: <code>2025-06-12</code></li>
+      <li>US short with time: <code>10/6/25 2:22</code></li>
+      <li>US short date: <code>10/6/25</code> or <code>10/6/2025</code></li>
+    </ul>
+
+    <!-- API ROUTES -->
+    <h2 id="api">API Routes</h2>
+
+    <h3><code>/api/clients</code></h3>
+    <table>
+      <tr><th>Method</th><th>Description</th><th>Body</th><th>Returns</th></tr>
+      <tr>
+        <td><span class="badge get">GET</span></td>
+        <td>List all clients</td>
+        <td>—</td>
+        <td>Array of client objects (<code>blobUrl</code> stripped)</td>
+      </tr>
+      <tr>
+        <td><span class="badge post">POST</span></td>
+        <td>Create new client</td>
+        <td><code>multipart/form-data</code>: <code>name</code>, <code>csv</code> (File)</td>
+        <td>New client object</td>
+      </tr>
+    </table>
+
+    <h3><code>/api/clients/[id]</code></h3>
+    <table>
+      <tr><th>Method</th><th>Description</th><th>Body</th><th>Returns</th></tr>
+      <tr>
+        <td><span class="badge get">GET</span></td>
+        <td>Get single client config</td>
+        <td>—</td>
+        <td>Client object</td>
+      </tr>
+      <tr>
+        <td><span class="badge patch">PATCH</span></td>
+        <td>Update name or tabs/chart configs</td>
+        <td>JSON: <code>{ name? }</code> or <code>{ tabs? }</code></td>
+        <td>Updated client object</td>
+      </tr>
+      <tr>
+        <td><span class="badge delete">DELETE</span></td>
+        <td>Remove client + blob</td>
+        <td>—</td>
+        <td><code>{ ok: true }</code></td>
+      </tr>
+    </table>
+
+    <h3><code>/api/clients/[id]/csv</code></h3>
+    <table>
+      <tr><th>Method</th><th>Description</th><th>Body</th><th>Returns</th></tr>
+      <tr>
+        <td><span class="badge get">GET</span></td>
+        <td>Stream CSV file from Blob to browser</td>
+        <td>—</td>
+        <td>CSV text (<code>text/csv</code>)</td>
+      </tr>
+      <tr>
+        <td><span class="badge put">PUT</span></td>
+        <td>Replace CSV (Refresh Data)</td>
+        <td><code>multipart/form-data</code>: <code>name?</code>, <code>csv</code> (File)</td>
+        <td>Updated client object</td>
+      </tr>
+    </table>
+
+    <div class="callout warn">
+      <strong>blobUrl is never exposed to the browser.</strong> The GET /csv route proxies the file
+      from Vercel Blob using the stored private URL. The <code>sanitize()</code> helper strips
+      <code>blobUrl</code> from all client API responses.
+    </div>
+
+    <!-- STORAGE -->
+    <h2 id="storage">Storage</h2>
+
+    <h3>Vercel Blob — CSV files</h3>
+    <p>Each client's CSV is stored as a private blob at <code>clients/{id}/data.csv</code>.
+       When a client is deleted the blob is also deleted. Private blobs require server-side
+       proxying to serve (handled by the <code>/csv</code> API route).</p>
+
+    <h3>Upstash Redis — client metadata &amp; configs</h3>
+    <p>Client records are stored in Redis (<code>lib/redis.ts</code>). The entire
+    <code>StoredClient</code> object (including all tabs and chart configs) is serialized as a single
+    Redis key per client. Functions exposed: <code>listClients()</code>, <code>saveClient()</code>,
+    <code>getClient()</code>, <code>deleteClient()</code>.</p>
+
+    <div class="callout info">
+      Chart config changes are debounced 800 ms before writing to Redis to avoid hammering the
+      database during rapid slider/toggle interactions.
+    </div>
+
+    <!-- STATE MANAGEMENT -->
+    <h2 id="state">State Management</h2>
+    <p>All app state lives in the <code>useClients()</code> hook (<code>lib/useClients.ts</code>)
+    and is passed down as props. There is no global state manager (no Redux, no Zustand).</p>
+
+    <table>
+      <tr><th>State</th><th>Type</th><th>Notes</th></tr>
+      <tr><td><code>clients</code></td><td><code>StoredClient[]</code></td><td>Full client list</td></tr>
+      <tr><td><code>activeClientId</code></td><td><code>string | null</code></td><td>Selected client</td></tr>
+      <tr><td><code>activeTabId</code></td><td><code>string | null</code></td><td>Selected tab</td></tr>
+      <tr><td><code>parsedData</code></td><td><code>ParsedData | null</code></td><td>Parsed CSV, in-memory only</td></tr>
+      <tr><td><code>hydrated</code></td><td><code>boolean</code></td><td>Initial API load complete</td></tr>
+      <tr><td><code>csvLoading</code></td><td><code>boolean</code></td><td>CSV fetch in progress</td></tr>
+    </table>
+
+    <p><strong>CSV caching:</strong> A <code>useRef</code> Map keyed by client ID caches parsed
+    <code>ParsedData</code> for the session lifetime. Switching clients re-uses the cache; uploading
+    a new CSV invalidates the cache entry for that client.</p>
+
+    <!-- WIDGET SYSTEM -->
+    <h2 id="widgets">Widget System</h2>
+
+    <h3>WidgetShell</h3>
+    <p>
+      <code>WidgetShell</code> is a shared wrapper used by 6 of the 8 widget types. It provides the
+      standard chrome: colored accent strip, drag handle, editable title, gear button (config panel),
+      and remove button.
+    </p>
+    <p>The gear panel renders in two sections separated by a divider:</p>
+    <ol>
+      <li><strong>configPanel</strong> — widget-specific query controls (passed as a prop)</li>
+      <li><strong>AppearanceControls</strong> — color picker, width toggle (¼/½/¾/Full), height toggle (S/M/L/XL)</li>
+    </ol>
+    <p>
+      <code>ChartPanel</code> (bar/line chart) and <code>PieChartWidget</code> do not use
+      <code>WidgetShell</code> — they have their own equivalent header/config implementations with
+      <code>AppearanceControls</code> called directly.
+    </p>
+
+    <h3>AppearanceControls</h3>
+    <p>Shared component (<code>components/AppearanceControls.tsx</code>) that renders:</p>
+    <ul>
+      <li>12-color palette picker → saves to <code>config.color</code></li>
+      <li>Width toggle (¼=1, ½=2, ¾=3, Full=4) → saves to <code>config.colSpan</code> (4-column grid)</li>
+      <li>Height toggle (S=200, M=300, L=400, XL=500) → saves to <code>config.chartHeight</code></li>
+    </ul>
+
+    <h3>SeriesColorPicker</h3>
+    <p>Used by <code>StackedBarWidget</code> and <code>PieChartWidget</code> to assign per-series
+    colors. Each series row is expandable to show the 12-color palette. Colors saved to
+    <code>config.seriesColors</code> as <code>Record&lt;tagLabel, hexColor&gt;</code>.</p>
+
+    <!-- WIDGET TYPES -->
+    <h2 id="widget-types">Widget Types</h2>
+    <div class="widget-grid">
+      <div class="widget-card">
+        <div class="wname">Total Count</div>
+        <div class="wtype">'total'</div>
+        <div class="wdesc">Single number. Supports all candidates or a specific tag, date presets, and advanced AND/OR criteria builder.</div>
+      </div>
+      <div class="widget-card">
+        <div class="wname">Bar Chart</div>
+        <div class="wtype">'bar'</div>
+        <div class="wdesc">Time-series vertical bars. Mode: "Over time" (by period) or "By tag group" (by tag). Supports All Candidates.</div>
+      </div>
+      <div class="widget-card">
+        <div class="wname">Line Chart</div>
+        <div class="wtype">'line'</div>
+        <div class="wdesc">Time-series line. Same config as bar chart. Supports All Candidates metric.</div>
+      </div>
+      <div class="widget-card">
+        <div class="wname">Column Chart</div>
+        <div class="wtype">'column'</div>
+        <div class="wdesc">Horizontal bars by tag group. Auto-height based on row count, overridable. Filter support.</div>
+      </div>
+      <div class="widget-card">
+        <div class="wname">Stacked Bar</div>
+        <div class="wtype">'stacked_bar'</div>
+        <div class="wdesc">Time-series stacked bars, one series per tag in the selected group. Per-series color customization.</div>
+      </div>
+      <div class="widget-card">
+        <div class="wname">Pie Chart</div>
+        <div class="wtype">'pie'</div>
+        <div class="wdesc">Donut chart by tag group with legend table. Per-slice color customization.</div>
+      </div>
+      <div class="widget-card">
+        <div class="wname">Table</div>
+        <div class="wtype">'table'</div>
+        <div class="wdesc">Ranked table: name, count, share %, inline bar indicator. Sorted descending by count.</div>
+      </div>
+      <div class="widget-card">
+        <div class="wname">Funnel</div>
+        <div class="wtype">'funnel'</div>
+        <div class="wdesc">Ordered stages. Each stage is a tag label. Shows step-to-step conversion % and overall conversion rate.</div>
+      </div>
+    </div>
+
+    <h3>Widget type config reference</h3>
+    <table>
+      <tr><th>Type</th><th>Key query fields</th><th>Special</th></tr>
+      <tr><td><code>'total'</code></td><td><code>metric</code>, <code>datePreset</code>, <code>filters</code>, <code>criteria</code></td><td>CriteriaBuilder for AND/OR</td></tr>
+      <tr><td><code>'bar'</code></td><td><code>metric</code> (or <code>'__all__'</code>), <code>groupBy</code>, <code>tagGroupAxis?</code></td><td>Two X-axis modes</td></tr>
+      <tr><td><code>'line'</code></td><td><code>metric</code> (or <code>'__all__'</code>), <code>groupBy</code>, <code>datePreset</code></td><td>—</td></tr>
+      <tr><td><code>'column'</code></td><td><code>tagGroupAxis</code>, <code>filters</code>, <code>datePreset</code></td><td>Height = data-driven unless overridden</td></tr>
+      <tr><td><code>'stacked_bar'</code></td><td><code>tagGroupAxis</code> (stack group), <code>groupBy</code>, <code>filters</code></td><td><code>seriesColors</code> per tag</td></tr>
+      <tr><td><code>'pie'</code></td><td><code>tagGroupAxis</code>, <code>filters</code>, <code>datePreset</code></td><td><code>seriesColors</code> per slice</td></tr>
+      <tr><td><code>'table'</code></td><td><code>tagGroupAxis</code>, <code>filters</code>, <code>datePreset</code></td><td>Max-height scroll when chartHeight set</td></tr>
+      <tr><td><code>'funnel'</code></td><td><code>funnelStages[]</code>, <code>datePreset</code></td><td>Bar height scales to <code>chartHeight</code></td></tr>
+    </table>
+
+    <!-- DATA PROCESSING -->
+    <h2 id="data-processing">Data Processing</h2>
+    <p>All chart data is computed client-side from <code>ParsedLead[]</code> on every render
+    (wrapped in <code>useMemo</code> keyed to the query). No server-side aggregation.</p>
+
+    <table>
+      <tr><th>Function</th><th>Input</th><th>Output</th></tr>
+      <tr>
+        <td><code>processChartData</code></td>
+        <td>leads + query (time-series mode)</td>
+        <td><code>ChartDataPoint[]</code> — all periods filled, zeros included</td>
+      </tr>
+      <tr>
+        <td><code>processTagGroupChart</code></td>
+        <td>leads + tagGroupName + query</td>
+        <td><code>ChartDataPoint[]</code> — one entry per tag in the group</td>
+      </tr>
+      <tr>
+        <td><code>processStackedBarChart</code></td>
+        <td>leads + stackGroupName + query</td>
+        <td><code>StackedBarDataPoint[]</code> — dynamic keys per tag label</td>
+      </tr>
+      <tr>
+        <td><code>processFunnelChart</code></td>
+        <td>leads + funnelStages[] + query</td>
+        <td><code>FunnelDataPoint[]</code> — count per stage</td>
+      </tr>
+      <tr>
+        <td><code>countLeadsForTotal</code></td>
+        <td>leads + metric + preset + filters + criteria</td>
+        <td><code>number</code></td>
+      </tr>
+    </table>
+
+    <h3>All Candidates mode</h3>
+    <p>
+      Setting <code>query.metric = '__all__'</code> in time-series charts counts all candidates by
+      <code>createdDate</code> (no tag filter). This sentinel value is recognized in
+      <code>processChartData</code>. <code>metric = null</code> (unset) still returns empty data
+      to show the "please configure" empty state.
+    </p>
+
+    <h3>Date preset resolution</h3>
+    <table>
+      <tr><th>Preset</th><th>Effective start</th><th>Effective end</th></tr>
+      <tr><td><code>'all_time'</code></td><td>null (no lower bound)</td><td>null</td></tr>
+      <tr><td><code>'this_year'</code></td><td>Jan 1 of current year</td><td>null</td></tr>
+      <tr><td><code>'this_month'</code></td><td>1st of current month</td><td>null</td></tr>
+      <tr><td><code>'last_30_days'</code></td><td>now − 30 days</td><td>null</td></tr>
+      <tr><td><code>'last_90_days'</code></td><td>now − 90 days</td><td>null</td></tr>
+      <tr><td><code>'custom'</code></td><td><code>query.startDate</code></td><td><code>query.endDate</code></td></tr>
+    </table>
+
+    <!-- INTERACTIONS -->
+    <h2 id="interactions">Interactions</h2>
+
+    <h3>Drag-and-drop reordering</h3>
+    <p>
+      All widgets in a tab use the HTML5 drag-and-drop API (<code>draggable</code>,
+      <code>onDragStart</code>/<code>onDragOver</code>/<code>onDrop</code>/<code>onDragEnd</code>).
+      The dragged widget is shown at 40% opacity; the drop target gets a blue ring. On drop, the
+      <code>chartConfigs</code> array is reordered and saved to Redis.
+    </p>
+
+    <h3>Title editing</h3>
+    <p>Clicking a widget title in the header activates an inline input. Blur or Enter commits;
+    Escape cancels. The new title is saved immediately via <code>onUpdate(id, { title })</code>.</p>
+
+    <h3>Config panel</h3>
+    <p>The gear icon toggles a collapsible panel below the widget header. Widget-specific controls
+    are rendered first; the appearance section (color/size) follows, separated by a divider.</p>
+
+    <!-- ADDING WIDGETS -->
+    <h2 id="adding-widgets">Adding a New Widget Type</h2>
+    <p>To add a new widget type to the system:</p>
+    <ol>
+      <li>Add the type string to the <code>WidgetType</code> union in <code>lib/types.ts</code></li>
+      <li>Add any new query fields to <code>ChartQuery</code> if needed</li>
+      <li>Add a data processor function to <code>lib/dataProcessor.ts</code></li>
+      <li>Create <code>components/YourWidget.tsx</code> using <code>WidgetShell</code> for the chrome</li>
+      <li>Add a <code>case 'your_type'</code> to the switch in <code>app/page.tsx</code></li>
+      <li>Add a card to the <code>TYPE_META</code> array in <code>components/AddChartModal.tsx</code></li>
+      <li>Handle the new type in <code>handleAdd()</code> in <code>AddChartModal.tsx</code> to build the initial <code>ChartQuery</code></li>
+    </ol>
+  </main>
+
+</div>
+
+<script>
+  // Highlight active nav link on scroll
+  const headings = document.querySelectorAll('h2[id]');
+  const links = document.querySelectorAll('nav a');
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const link = document.querySelector(`nav a[href="#${e.target.id}"]`);
+        if (link) link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '0px 0px -60% 0px' });
+  headings.forEach(h => obs.observe(h));
+</script>
+</body>
+</html>
