@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  LabelList,
 } from 'recharts';
 import type { ParsedData, ChartConfig, ChartQuery, GroupBy, DatePreset, TagGroup } from '@/lib/types';
 import { processStackedBarChart, DATE_PRESET_LABELS } from '@/lib/dataProcessor';
@@ -63,6 +64,14 @@ export default function StackedBarWidget({ data, config, accent, onUpdate, onRem
 
   const rotateLabels = chartData.length > 8;
   const chartHeight = config.chartHeight ?? 300;
+
+  const chartDataWithTotals = useMemo(
+    () => chartData.map((d) => ({
+      ...d,
+      __total: stackGroup?.tags.reduce((sum, tag) => sum + ((d[tag.label] as number) ?? 0), 0) ?? 0,
+    })),
+    [chartData, stackGroup]
+  );
 
   const seriesColor = (tagLabel: string, idx: number) =>
     config.seriesColors?.[tagLabel] ?? STACK_COLORS[idx % STACK_COLORS.length];
@@ -165,14 +174,21 @@ export default function StackedBarWidget({ data, config, accent, onUpdate, onRem
         ) : (
           <>
             <ResponsiveContainer width="100%" height={rotateLabels ? chartHeight + 40 : chartHeight}>
-              <BarChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
+              <BarChart data={chartDataWithTotals} margin={{ top: 20, right: 16, left: 0, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                 <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#94a3b8', textAnchor: rotateLabels ? 'end' : 'middle' }} axisLine={false} tickLine={false} angle={rotateLabels ? -45 : 0} interval={rotateLabels ? 0 : 'preserveStartEnd'} height={rotateLabels ? 72 : 30} />
                 <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<StackedTooltip />} cursor={{ fill: '#f1f5f9' }} />
-                {stackGroup?.tags.map((tag, idx) => (
-                  <Bar key={tag.label} dataKey={tag.label} name={tag.tag} stackId="s" fill={seriesColor(tag.label, idx)} maxBarSize={48} radius={idx === (stackGroup.tags.length - 1) ? [4, 4, 0, 0] : [0, 0, 0, 0]} />
-                ))}
+                {stackGroup?.tags.map((tag, idx) => {
+                  const isTop = idx === stackGroup.tags.length - 1;
+                  return (
+                    <Bar key={tag.label} dataKey={tag.label} name={tag.tag} stackId="s" fill={seriesColor(tag.label, idx)} maxBarSize={48} radius={isTop ? [4, 4, 0, 0] : [0, 0, 0, 0]}>
+                      {isTop && (
+                        <LabelList dataKey="__total" position="top" style={{ fontSize: 10, fill: '#64748b', fontWeight: 500 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v).toLocaleString() : '')} />
+                      )}
+                    </Bar>
+                  );
+                })}
               </BarChart>
             </ResponsiveContainer>
             {stackGroup && (
