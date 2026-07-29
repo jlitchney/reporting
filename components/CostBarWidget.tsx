@@ -8,15 +8,19 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
   LabelList,
 } from 'recharts';
 import WidgetShell from './WidgetShell';
-import { processCostBarData, DATE_PRESET_LABELS } from '@/lib/dataProcessor';
+import { computeCostMetrics, DATE_PRESET_LABELS } from '@/lib/dataProcessor';
 import type { ParsedData, ChartConfig, ChartQuery, DatePreset, CostMetricDef } from '@/lib/types';
 import type { SpendEntry } from '@/lib/redis';
 
 const DATE_PRESETS: DatePreset[] = ['all_time', 'this_year', 'this_month', 'last_30_days', 'last_90_days'];
+
+// Colors for additional metrics beyond the first (which uses accent)
+const EXTRA_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 interface Props {
   data: ParsedData;
@@ -38,18 +42,20 @@ function getEffectiveMetricDefs(config: ChartConfig): CostMetricDef[] {
   if (config.query.costMetric) {
     return [{ tagLabel: config.query.costMetric, name: 'Applications' }];
   }
-  return [];
+  // Default: All Candidates
+  return [{ tagLabel: '', name: 'All Candidates' }];
 }
 
-const CustomTooltip = ({ active, payload, label, metricName }: any) => {
+const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
-  const val: number = payload[0].value;
   return (
     <div className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white shadow-lg">
-      <p className="font-medium">{label}</p>
-      <p className="text-blue-300">
-        {val > 0 ? `$${val.toFixed(2)}` : '—'} / {metricName}
-      </p>
+      <p className="mb-1 font-medium">{label}</p>
+      {payload.map((p: any) => (
+        <p key={p.name} style={{ color: p.fill }}>
+          {Number(p.value) > 0 ? `$${Number(p.value).toFixed(2)}` : '—'} / {p.name}
+        </p>
+      ))}
     </div>
   );
 };
@@ -74,26 +80,37 @@ export default function CostBarWidget({
   const sourceGroup = query.costSourceGroup ?? tagGroups[0]?.name ?? '';
   const datePreset = query.datePreset ?? 'all_time';
   const metricDefs = getEffectiveMetricDefs(config);
-  const selectedMetricName = query.costSelectedMetric ?? metricDefs[0]?.name ?? '';
 
   const updateMetricDefs = (defs: CostMetricDef[]) =>
     updateQuery({ costMetricDefs: defs, costMetric: undefined });
 
+  const barColor = (i: number) => i === 0 ? accent : EXTRA_COLORS[(i - 1) % EXTRA_COLORS.length];
+
+  // Build one data point per week with a key per metric
   const chartData = useMemo(() => {
-    if (metricDefs.length === 0 || !selectedMetricName) return [];
-    return processCostBarData(
+    if (metricDefs.length === 0) return [];
+    const rows = computeCostMetrics(
       data.leads,
       spendData,
       tagGroups,
       sourceGroup,
       metricDefs,
-      selectedMetricName,
       { datePreset: query.datePreset, startDate: query.startDate, endDate: query.endDate, excludeRemoved: query.excludeRemoved },
     );
-  }, [data.leads, spendData, tagGroups, sourceGroup, metricDefs, selectedMetricName, query]);
+    return rows
+      .map((row) => {
+        const point: Record<string, number | string> = { period: row.weekLabel };
+        for (const def of metricDefs) {
+          point[def.name] = row.totals.costPer[def.name] ?? 0;
+        }
+        return point;
+      })
+      .filter((point) => metricDefs.some((def) => Number(point[def.name]) > 0));
+  }, [data.leads, spendData, tagGroups, sourceGroup, metricDefs, query]);
 
   const chartHeight = config.chartHeight ?? 300;
   const rotateLabels = chartData.length > 8;
+  const showLegend = metricDefs.length > 1;
 
   const configPanel = (
     <div className="space-y-3">
@@ -103,6 +120,7 @@ export default function CostBarWidget({
         <div className="space-y-1.5">
           {metricDefs.map((def, i) => (
             <div key={i} className="flex items-center gap-1.5">
+              <div className="h-3 w-3 flex-shrink-0 rounded-sm" style={{ background: barColor(i) }} />
               <select
                 value={def.tagLabel}
                 onChange={(e) => {
@@ -146,8 +164,7 @@ export default function CostBarWidget({
           <button
             onClick={() => {
               const firstTag = tagGroups[0]?.tags[0];
-              if (!firstTag) return;
-              updateMetricDefs([...metricDefs, { tagLabel: firstTag.label, name: firstTag.tag }]);
+              updateMetricDefs([...metricDefs, { tagLabel: firstTag?.label ?? '', name: firstTag?.tag ?? 'All Candidates' }]);
             }}
             className="flex items-center gap-1 rounded border border-dashed border-slate-300 px-2 py-1 text-xs text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-700"
           >
@@ -158,25 +175,6 @@ export default function CostBarWidget({
           </button>
         </div>
       </div>
-
-      {/* Display metric picker (when multiple defined) */}
-      {metricDefs.length > 1 && (
-        <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Display metric</label>
-          <div className="flex flex-wrap gap-1">
-            {metricDefs.map((def) => (
-              <button
-                key={def.name}
-                onClick={() => updateQuery({ costSelectedMetric: def.name })}
-                className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${selectedMetricName === def.name ? 'text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                style={selectedMetricName === def.name ? { backgroundColor: accent } : {}}
-              >
-                {def.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Source group */}
       <div>
@@ -237,11 +235,7 @@ export default function CostBarWidget({
       configPanel={configPanel}
     >
       <div className="px-4 pb-4 pt-2">
-        {metricDefs.length === 0 ? (
-          <div className="flex h-48 items-center justify-center text-sm text-slate-400">
-            Add at least one metric in settings
-          </div>
-        ) : chartData.length === 0 ? (
+        {chartData.length === 0 ? (
           <div className="flex h-48 items-center justify-center text-sm text-slate-400">
             No cost data — configure spend in Manage Spend
           </div>
@@ -264,15 +258,29 @@ export default function CostBarWidget({
                 tickFormatter={(v) => `$${Number(v).toFixed(0)}`}
                 width={52}
               />
-              <Tooltip content={<CustomTooltip metricName={selectedMetricName} />} />
-              <Bar dataKey="count" fill={accent} radius={[4, 4, 0, 0]} maxBarSize={48}>
-                <LabelList
-                  dataKey="count"
-                  position="top"
-                  style={{ fontSize: 10, fill: '#64748b' }}
-                  formatter={(v: unknown) => (Number(v) > 0 ? `$${Number(v).toFixed(2)}` : '')}
+              <Tooltip content={<CustomTooltip />} />
+              {showLegend && (
+                <Legend
+                  wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                  formatter={(value) => <span style={{ color: '#64748b' }}>{value}</span>}
                 />
-              </Bar>
+              )}
+              {metricDefs.map((def, i) => (
+                <Bar
+                  key={def.name}
+                  dataKey={def.name}
+                  fill={barColor(i)}
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={metricDefs.length > 1 ? 28 : 48}
+                >
+                  <LabelList
+                    dataKey={def.name}
+                    position="top"
+                    style={{ fontSize: 10, fill: '#64748b' }}
+                    formatter={(v: unknown) => (Number(v) > 0 ? `$${Number(v).toFixed(2)}` : '')}
+                  />
+                </Bar>
+              ))}
             </BarChart>
           </ResponsiveContainer>
         )}
