@@ -270,7 +270,7 @@ export default function CostBarWidget({
                   dataKey="count"
                   position="top"
                   style={{ fontSize: 10, fill: '#64748b' }}
-                  formatter={(v: unknown) => (Number(v) > 0 ? `$${Number(v).toFixed(0)}` : '')}
+                  formatter={(v: unknown) => (Number(v) > 0 ? `$${Number(v).toFixed(2)}` : '')}
                 />
               </Bar>
             </BarChart>
