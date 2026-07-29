@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import ChartPanel, { CHART_ACCENT_COLORS } from '@/components/ChartPanel';
 import TotalWidget from '@/components/TotalWidget';
@@ -149,6 +149,8 @@ export default function Home() {
     [activeClientId, renameTab]
   );
 
+  const [addingWidget, setAddingWidget] = useState(false);
+
   const widgets = activeTab?.chartConfigs ?? [];
   const totalWidgets = widgets.filter((w) => (w.type ?? 'bar') === 'total');
   const barWidgets = widgets.filter((w) => (w.type ?? 'bar') === 'bar');
@@ -280,27 +282,58 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Add widget row */}
-              <div className="flex gap-3">
+              {/* Add widget */}
+              {addingWidget ? (
+                <div className="rounded-lg border-2 border-dashed border-slate-200 p-4">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Choose chart type</p>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={() => { handleAddWidget('total'); setAddingWidget(false); }}
+                      className="flex flex-1 min-w-36 items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-left hover:border-[#1e3a6e] hover:shadow-sm transition-all"
+                    >
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-700">Total</p>
+                        <p className="text-xs text-slate-400">Single count with date range</p>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => { handleAddWidget('bar'); setAddingWidget(false); }}
+                      className="flex flex-1 min-w-36 items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-left hover:border-[#1e3a6e] hover:shadow-sm transition-all"
+                    >
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-700">Bar Chart</p>
+                        <p className="text-xs text-slate-400">Counts over time by period</p>
+                      </div>
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setAddingWidget(false)}
+                    className="mt-3 text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
                 <button
-                  onClick={() => handleAddWidget('total')}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 py-3.5 text-sm font-medium text-slate-400 hover:border-[#1e3a6e] hover:text-[#1e3a6e] transition-colors"
+                  onClick={() => setAddingWidget(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 py-4 text-sm font-medium text-slate-400 hover:border-[#1e3a6e] hover:text-[#1e3a6e] transition-colors"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  Add Total
+                  Add Chart
                 </button>
-                <button
-                  onClick={() => handleAddWidget('bar')}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 py-3.5 text-sm font-medium text-slate-400 hover:border-[#1e3a6e] hover:text-[#1e3a6e] transition-colors"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Add Bar Chart
-                </button>
-              </div>
+              )}
             </div>
           )}
         </main>
