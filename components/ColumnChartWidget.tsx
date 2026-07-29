@@ -33,6 +33,12 @@ export default function ColumnChartWidget({ data, config, accent, onUpdate, onRe
 
   const updateQuery = (patch: Partial<ChartQuery>) => onUpdate(id, { query: { ...query, ...patch } });
 
+  const switchType = (newType: 'bar' | 'line' | 'column') => {
+    if (newType === (config.type ?? 'column')) return;
+    const queryPatch = newType === 'line' ? { tagGroupAxis: undefined as string | undefined } : {};
+    onUpdate(id, { type: newType, query: { ...query, ...queryPatch } });
+  };
+
   const tagGroupName = query.tagGroupAxis ?? tagGroups[0]?.name ?? '';
 
   const chartData = useMemo(
@@ -44,6 +50,19 @@ export default function ColumnChartWidget({ data, config, accent, onUpdate, onRe
 
   const configPanel = (
     <div className="flex flex-wrap items-end gap-3">
+      <div className="w-full flex flex-col gap-1 pb-3 border-b border-slate-100">
+        <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Chart type</label>
+        <div className="flex overflow-hidden rounded border border-slate-200">
+          {(['bar', 'line', 'column'] as const).map((t) => (
+            <button key={t} onClick={() => switchType(t)}
+              className={`flex-1 py-1.5 text-xs font-medium transition-colors ${(config.type ?? 'column') === t ? 'text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+              style={(config.type ?? 'column') === t ? { backgroundColor: accent } : {}}
+            >
+              {t === 'bar' ? 'Bar' : t === 'line' ? 'Line' : 'Column'}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="flex flex-col gap-1">
         <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Tag group</label>
         <select

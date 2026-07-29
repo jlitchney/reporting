@@ -29,10 +29,32 @@ export default function LineChartWidget({ data, config, accent, onUpdate, onRemo
 
   const updateQuery = (patch: Partial<ChartQuery>) => onUpdate(id, { query: { ...query, ...patch } });
 
+  const switchType = (newType: 'bar' | 'line' | 'column') => {
+    if (newType === (config.type ?? 'line')) return;
+    const queryPatch = newType === 'column' && !query.tagGroupAxis
+      ? { tagGroupAxis: tagGroups[0]?.name }
+      : newType === 'line' ? { tagGroupAxis: undefined as string | undefined }
+      : {};
+    onUpdate(id, { type: newType, query: { ...query, ...queryPatch } });
+  };
+
   const chartData = useMemo(() => processChartData(leads, query), [leads, query]);
 
   const configPanel = (
     <div className="flex flex-wrap items-end gap-3">
+      <div className="w-full flex flex-col gap-1 pb-3 border-b border-slate-100">
+        <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Chart type</label>
+        <div className="flex overflow-hidden rounded border border-slate-200">
+          {(['bar', 'line', 'column'] as const).map((t) => (
+            <button key={t} onClick={() => switchType(t)}
+              className={`flex-1 py-1.5 text-xs font-medium transition-colors ${(config.type ?? 'line') === t ? 'text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+              style={(config.type ?? 'line') === t ? { backgroundColor: accent } : {}}
+            >
+              {t === 'bar' ? 'Bar' : t === 'line' ? 'Line' : 'Column'}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="flex flex-col gap-1">
         <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Count</label>
         <select
