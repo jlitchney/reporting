@@ -121,40 +121,40 @@ export default function ChartPanel({
       {configOpen && (
         <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
           <div className="flex flex-wrap items-end gap-3">
-            {/* Metric */}
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
-                {query.tagGroupAxis ? 'Additional filter' : 'Count'}
-              </label>
-              <select
-                value={query.metric ?? ''}
-                onChange={(e) => {
-                  const metric = e.target.value || null;
-                  updateQuery({ metric, dateField: metric ?? 'created', filters: [] });
-                }}
-                className="rounded border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
-              >
-                <option value="">{query.tagGroupAxis ? 'None' : 'Select a tag…'}</option>
-                {tagGroups.map((g) => (
-                  <optgroup key={g.name} label={g.name}>
-                    {g.tags.map((t) => (
-                      <option key={t.label} value={t.label}>{t.tag}</option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-              {query.metric && (
-                <label className="mt-1 flex cursor-pointer items-center gap-1.5">
-                  <input
-                    type="checkbox"
-                    checked={query.excludeRemoved ?? false}
-                    onChange={(e) => updateQuery({ excludeRemoved: e.target.checked })}
-                    className="h-3.5 w-3.5 accent-[#1e3a6e]"
-                  />
-                  <span className="text-[10px] text-slate-500">Exclude removed</span>
-                </label>
-              )}
-            </div>
+            {/* Metric (time mode only) */}
+            {!query.tagGroupAxis && (
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Count</label>
+                <select
+                  value={query.metric ?? ''}
+                  onChange={(e) => {
+                    const metric = e.target.value || null;
+                    updateQuery({ metric, dateField: metric ?? 'created', filters: [] });
+                  }}
+                  className="rounded border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  <option value="">Select a tag…</option>
+                  {tagGroups.map((g) => (
+                    <optgroup key={g.name} label={g.name}>
+                      {g.tags.map((t) => (
+                        <option key={t.label} value={t.label}>{t.tag}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                {query.metric && (
+                  <label className="mt-1 flex cursor-pointer items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={query.excludeRemoved ?? false}
+                      onChange={(e) => updateQuery({ excludeRemoved: e.target.checked })}
+                      className="h-3.5 w-3.5 accent-[#1e3a6e]"
+                    />
+                    <span className="text-[10px] text-slate-500">Exclude removed</span>
+                  </label>
+                )}
+              </div>
+            )}
 
             {/* X axis mode */}
             <div className="flex flex-col gap-1">
@@ -172,7 +172,7 @@ export default function ChartPanel({
                 <button
                   onClick={() => {
                     const firstGroup = tagGroups[0]?.name;
-                    if (firstGroup) updateQuery({ tagGroupAxis: firstGroup });
+                    if (firstGroup) updateQuery({ tagGroupAxis: firstGroup, metric: null, dateField: 'created' });
                   }}
                   className={`px-3 py-1.5 text-sm font-medium transition-colors ${
                     query.tagGroupAxis ? 'text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
@@ -197,6 +197,15 @@ export default function ChartPanel({
                     <option key={g.name} value={g.name}>{g.name}</option>
                   ))}
                 </select>
+                <label className="mt-1 flex cursor-pointer items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={query.excludeRemoved ?? false}
+                    onChange={(e) => updateQuery({ excludeRemoved: e.target.checked })}
+                    className="h-3.5 w-3.5 accent-[#1e3a6e]"
+                  />
+                  <span className="text-[10px] text-slate-500">Exclude removed</span>
+                </label>
               </div>
             )}
 
