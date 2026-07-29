@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { del } from '@vercel/blob';
 import { getClient, saveClient, deleteClient } from '@/lib/redis';
 
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const client = await getClient(id);
+  if (!client) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const { blobUrl: _url, ...sanitized } = client;
+  void _url;
+  return NextResponse.json(sanitized);
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
