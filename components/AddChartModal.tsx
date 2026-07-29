@@ -18,11 +18,12 @@ const GROUP_OPTIONS: { label: string; value: GroupBy }[] = [
   { label: 'Quarter', value: 'quarter' },
 ];
 
-function autoTitle(type: WidgetType, metric: string | null, data: ParsedData): string {
+function autoTitle(type: WidgetType, metric: string | null, data: ParsedData, tagGroupAxis?: string | null): string {
   const tagName = metric
     ? data.tagGroups.flatMap((g) => g.tags).find((t) => t.label === metric)?.tag ?? metric
     : null;
   if (type === 'total') return tagName ?? 'Total Leads';
+  if (tagGroupAxis) return tagName ? `${tagName} by ${tagGroupAxis}` : `Leads by ${tagGroupAxis}`;
   return tagName ? `${tagName} over time` : 'New Chart';
 }
 
@@ -36,9 +37,10 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
   const [customEnd, setCustomEnd] = useState('');
   const [criteria, setCriteria] = useState<CriteriaFilter>({ conditions: [], logic: [] });
   const [groupBy, setGroupBy] = useState<GroupBy>('week');
+  const [tagGroupAxis, setTagGroupAxis] = useState<string | null>(null);
   const [titleOverride, setTitleOverride] = useState('');
 
-  const derivedTitle = autoTitle(type, metric, data);
+  const derivedTitle = autoTitle(type, metric, data, tagGroupAxis);
   const displayTitle = titleOverride || derivedTitle;
 
   const pickType = (t: WidgetType) => {
@@ -49,6 +51,7 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
     setCustomStart('');
     setCustomEnd('');
     setCriteria({ conditions: [], logic: [] });
+    setTagGroupAxis(null);
     setStep('config');
   };
 
@@ -64,6 +67,7 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
         criteria: type === 'total' ? criteria : undefined,
         dateField: metric ?? 'created',
         groupBy,
+        tagGroupAxis: type === 'bar' && tagGroupAxis ? tagGroupAxis : undefined,
         startDate,
         endDate,
         ...(type === 'total' ? { datePreset } : {}),
@@ -210,27 +214,70 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
                 </div>
               )}
 
-              {/* Group by (Bar only) */}
+              {/* X axis mode (Bar only) */}
               {type === 'bar' && (
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Group by
-                  </label>
-                  <div className="flex overflow-hidden rounded-lg border border-slate-200">
-                    {GROUP_OPTIONS.map((opt) => (
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      X Axis
+                    </label>
+                    <div className="flex overflow-hidden rounded-lg border border-slate-200">
                       <button
-                        key={opt.value}
-                        onClick={() => setGroupBy(opt.value)}
+                        onClick={() => setTagGroupAxis(null)}
                         className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                          groupBy === opt.value
-                            ? 'bg-[#1e3a6e] text-white'
-                            : 'bg-white text-slate-600 hover:bg-slate-50'
+                          !tagGroupAxis ? 'bg-[#1e3a6e] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
                         }`}
                       >
-                        {opt.label}
+                        Over time
                       </button>
-                    ))}
+                      <button
+                        onClick={() => setTagGroupAxis(tagGroups[0]?.name ?? '')}
+                        className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                          tagGroupAxis ? 'bg-[#1e3a6e] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        By tag group
+                      </button>
+                    </div>
                   </div>
+
+                  {tagGroupAxis ? (
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Tag group
+                      </label>
+                      <select
+                        value={tagGroupAxis}
+                        onChange={(e) => setTagGroupAxis(e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#1e3a6e] focus:ring-2 focus:ring-[#1e3a6e]/20"
+                      >
+                        {tagGroups.map((g) => (
+                          <option key={g.name} value={g.name}>{g.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Time grouping
+                      </label>
+                      <div className="flex overflow-hidden rounded-lg border border-slate-200">
+                        {GROUP_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            onClick={() => setGroupBy(opt.value)}
+                            className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                              groupBy === opt.value
+                                ? 'bg-[#1e3a6e] text-white'
+                                : 'bg-white text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

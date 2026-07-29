@@ -31,7 +31,7 @@ export interface ParsedData {
 export interface ChartDataPoint {
   period: string;
   count: number;
-  periodStart: Date;
+  periodStart?: Date;
 }
 
 export type GroupBy = 'week' | 'month' | 'quarter';
@@ -60,6 +60,7 @@ export interface ChartQuery {
   criteria?: CriteriaFilter;
   dateField: string;
   groupBy: GroupBy;
+  tagGroupAxis?: string; // if set, X axis shows tags within this group instead of time periods
   startDate: Date | null;
   endDate: Date | null;
   datePreset?: DatePreset;

@@ -12,7 +12,7 @@ import {
   startOfYear,
   subDays,
 } from 'date-fns';
-import type { ParsedLead, ChartDataPoint, ChartQuery, GroupBy, DatePreset, CriteriaFilter, FilterCondition } from './types';
+import type { ParsedLead, ChartDataPoint, ChartQuery, GroupBy, DatePreset, CriteriaFilter, FilterCondition, TagGroup } from './types';
 
 function testCondition(lead: ParsedLead, cond: FilterCondition): boolean {
   if (!cond.tag) return true;
@@ -137,6 +137,38 @@ export function processChartData(leads: ParsedLead[], query: ChartQuery): ChartD
     count: counts.get(periodStart.getTime()) ?? 0,
     periodStart,
   }));
+}
+
+export function processTagGroupChart(
+  leads: ParsedLead[],
+  tagGroups: TagGroup[],
+  tagGroupName: string,
+  query: ChartQuery
+): ChartDataPoint[] {
+  const { metric, filters, criteria, startDate, endDate } = query;
+  const group = tagGroups.find((g) => g.name === tagGroupName);
+  if (!group) return [];
+
+  return group.tags.map((tag) => {
+    const count = leads.filter((lead) => {
+      if (!lead.tags.get(tag.label)?.applied) return false;
+      if (metric && !lead.tags.get(metric)?.applied) return false;
+
+      if (startDate || endDate) {
+        const date = metric ? lead.tags.get(metric)?.applied ?? null : lead.createdDate;
+        if (startDate && (!date || isBefore(date, startDate))) return false;
+        if (endDate && date && isAfter(date, endDate)) return false;
+      }
+
+      if (criteria && criteria.conditions.length > 0) return evaluateCriteria(lead, criteria);
+      for (const f of filters) {
+        if (f === metric || f === tag.label) continue;
+        if (!lead.tags.get(f)?.applied) return false;
+      }
+      return true;
+    }).length;
+    return { period: tag.tag, count };
+  });
 }
 
 export function countLeadsWithTag(leads: ParsedLead[], tagLabel: string): number {

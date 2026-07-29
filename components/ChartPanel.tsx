@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import type { ParsedData, ChartConfig, ChartQuery, GroupBy, TagGroup } from '@/lib/types';
-import { processChartData, countLeadsWithFilters } from '@/lib/dataProcessor';
+import { processChartData, processTagGroupChart, countLeadsWithFilters } from '@/lib/dataProcessor';
 import ReportBarChart from './ReportBarChart';
 
 interface ChartPanelProps {
@@ -39,7 +39,12 @@ export default function ChartPanel({
   const updateQuery = (patch: Partial<ChartQuery>) =>
     onUpdate(id, { query: { ...query, ...patch } });
 
-  const chartData = useMemo(() => processChartData(leads, query), [leads, query]);
+  const chartData = useMemo(
+    () => query.tagGroupAxis
+      ? processTagGroupChart(leads, tagGroups, query.tagGroupAxis, query)
+      : processChartData(leads, query),
+    [leads, tagGroups, query]
+  );
 
   const totalCount = useMemo(() => {
     if (!query.metric) return 0;
@@ -119,7 +124,9 @@ export default function ChartPanel({
           <div className="flex flex-wrap items-end gap-3">
             {/* Metric */}
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Count</label>
+              <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                {query.tagGroupAxis ? 'Additional filter' : 'Count'}
+              </label>
               <select
                 value={query.metric ?? ''}
                 onChange={(e) => {
@@ -128,7 +135,7 @@ export default function ChartPanel({
                 }}
                 className="rounded border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
               >
-                <option value="">Select a tag…</option>
+                <option value="">{query.tagGroupAxis ? 'None' : 'Select a tag…'}</option>
                 {tagGroups.map((g) => (
                   <optgroup key={g.name} label={g.name}>
                     {g.tags.map((t) => (
@@ -138,6 +145,73 @@ export default function ChartPanel({
                 ))}
               </select>
             </div>
+
+            {/* X axis mode */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">X Axis</label>
+              <div className="flex overflow-hidden rounded border border-slate-200">
+                <button
+                  onClick={() => updateQuery({ tagGroupAxis: undefined })}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                    !query.tagGroupAxis ? 'text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                  style={!query.tagGroupAxis ? { backgroundColor: accent } : {}}
+                >
+                  Over time
+                </button>
+                <button
+                  onClick={() => {
+                    const firstGroup = tagGroups[0]?.name;
+                    if (firstGroup) updateQuery({ tagGroupAxis: firstGroup });
+                  }}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                    query.tagGroupAxis ? 'text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                  style={query.tagGroupAxis ? { backgroundColor: accent } : {}}
+                >
+                  By tag group
+                </button>
+              </div>
+            </div>
+
+            {/* Tag group selector (tag group mode) */}
+            {query.tagGroupAxis && (
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Tag group</label>
+                <select
+                  value={query.tagGroupAxis}
+                  onChange={(e) => updateQuery({ tagGroupAxis: e.target.value })}
+                  className="rounded border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  {tagGroups.map((g) => (
+                    <option key={g.name} value={g.name}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Time grouping (time mode only) */}
+            {!query.tagGroupAxis && (
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Time grouping</label>
+                <div className="flex overflow-hidden rounded border border-slate-200">
+                  {GROUP_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => updateQuery({ groupBy: opt.value })}
+                      className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                        query.groupBy === opt.value
+                          ? 'text-white'
+                          : 'bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                      style={query.groupBy === opt.value ? { backgroundColor: accent } : {}}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Filter */}
             <div className="flex flex-col gap-1">
@@ -167,27 +241,6 @@ export default function ChartPanel({
                   );
                 })}
               </select>
-            </div>
-
-            {/* Group by */}
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Group by</label>
-              <div className="flex overflow-hidden rounded border border-slate-200">
-                {GROUP_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => updateQuery({ groupBy: opt.value })}
-                    className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                      query.groupBy === opt.value
-                        ? 'text-white'
-                        : 'bg-white text-slate-600 hover:bg-slate-50'
-                    }`}
-                    style={query.groupBy === opt.value ? { backgroundColor: accent } : {}}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Date range */}
