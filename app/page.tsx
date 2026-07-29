@@ -2,17 +2,38 @@
 
 import { useCallback, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
-import MetricCards from '@/components/MetricCards';
 import ChartPanel, { CHART_ACCENT_COLORS } from '@/components/ChartPanel';
+import TotalWidget from '@/components/TotalWidget';
 import TabBar from '@/components/TabBar';
 import { useClients } from '@/lib/useClients';
 import { clientNameFromFilename } from '@/lib/csvParser';
-import type { ChartConfig } from '@/lib/types';
+import type { ChartConfig, WidgetType } from '@/lib/types';
 
-function newChart(data: NonNullable<ReturnType<typeof useClients>['parsedData']>, index: number): ChartConfig {
-  const tag = data.tagColumns[index % data.tagColumns.length];
+function newWidget(
+  data: NonNullable<ReturnType<typeof useClients>['parsedData']>,
+  type: WidgetType,
+  index: number
+): ChartConfig {
+  const tag = data.tagColumns[index % Math.max(data.tagColumns.length, 1)];
+  if (type === 'total') {
+    return {
+      id: `widget-${Date.now()}-${index}`,
+      type: 'total',
+      title: tag ? tag.tag : 'Total Leads',
+      query: {
+        metric: tag?.label ?? null,
+        filters: [],
+        dateField: tag?.label ?? 'created',
+        groupBy: 'week',
+        startDate: null,
+        endDate: null,
+        datePreset: 'all_time',
+      },
+    };
+  }
   return {
-    id: `chart-${Date.now()}-${index}`,
+    id: `widget-${Date.now()}-${index}`,
+    type: 'bar',
     title: tag ? `${tag.tag} over time` : 'New Chart',
     query: {
       metric: tag?.label ?? null,
@@ -81,10 +102,11 @@ export default function Home() {
   const handleUpdateChart = useCallback(
     (chartId: string, updates: Partial<ChartConfig>) => {
       if (!activeClientId || !activeTab) return;
-      const updated = activeTab.chartConfigs.map((c) =>
-        c.id === chartId ? { ...c, ...updates } : c
+      updateTabCharts(
+        activeClientId,
+        activeTab.id,
+        activeTab.chartConfigs.map((c) => (c.id === chartId ? { ...c, ...updates } : c))
       );
-      updateTabCharts(activeClientId, activeTab.id, updated);
     },
     [activeClientId, activeTab, updateTabCharts]
   );
@@ -97,11 +119,14 @@ export default function Home() {
     [activeClientId, activeTab, updateTabCharts]
   );
 
-  const handleAddChart = useCallback(() => {
-    if (!activeClientId || !activeTab || !parsedData) return;
-    const next = [...activeTab.chartConfigs, newChart(parsedData, activeTab.chartConfigs.length)];
-    updateTabCharts(activeClientId, activeTab.id, next);
-  }, [activeClientId, activeTab, parsedData, updateTabCharts]);
+  const handleAddWidget = useCallback(
+    (type: WidgetType) => {
+      if (!activeClientId || !activeTab || !parsedData) return;
+      const next = [...activeTab.chartConfigs, newWidget(parsedData, type, activeTab.chartConfigs.length)];
+      updateTabCharts(activeClientId, activeTab.id, next);
+    },
+    [activeClientId, activeTab, parsedData, updateTabCharts]
+  );
 
   const handleAddTab = useCallback(() => {
     if (!activeClientId) return;
@@ -124,7 +149,15 @@ export default function Home() {
     [activeClientId, renameTab]
   );
 
-  const charts = activeTab?.chartConfigs ?? [];
+  const widgets = activeTab?.chartConfigs ?? [];
+  const totalWidgets = widgets.filter((w) => (w.type ?? 'bar') === 'total');
+  const barWidgets = widgets.filter((w) => (w.type ?? 'bar') === 'bar');
+
+  // Assign accent colors globally across all widgets in order
+  const accentFor = (id: string) => {
+    const idx = widgets.findIndex((w) => w.id === id);
+    return CHART_ACCENT_COLORS[idx % CHART_ACCENT_COLORS.length];
+  };
 
   if (!hydrated) {
     return (
@@ -210,29 +243,64 @@ export default function Home() {
             </div>
           ) : (
             <div className="space-y-5 px-6 py-6">
-              <MetricCards data={parsedData} />
+              {/* Total count widgets */}
+              {totalWidgets.length > 0 && (
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                  {totalWidgets.map((w) => (
+                    <TotalWidget
+                      key={w.id}
+                      data={parsedData}
+                      config={w}
+                      accent={accentFor(w.id)}
+                      onUpdate={handleUpdateChart}
+                      onRemove={handleRemoveChart}
+                    />
+                  ))}
+                </div>
+              )}
 
-              {charts.map((chart, i) => (
+              {/* Bar chart widgets */}
+              {barWidgets.map((w) => (
                 <ChartPanel
-                  key={chart.id}
+                  key={w.id}
                   data={parsedData}
-                  config={chart}
-                  accent={CHART_ACCENT_COLORS[i % CHART_ACCENT_COLORS.length]}
+                  config={w}
+                  accent={accentFor(w.id)}
                   onUpdate={handleUpdateChart}
                   onRemove={handleRemoveChart}
-                  canRemove={charts.length > 1}
+                  canRemove
                 />
               ))}
 
-              <button
-                onClick={handleAddChart}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 py-4 text-sm font-medium text-slate-400 hover:border-[#1e3a6e] hover:text-[#1e3a6e] transition-colors"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add Chart
-              </button>
+              {/* Empty state */}
+              {widgets.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <p className="text-sm font-medium text-slate-500">This tab is empty</p>
+                  <p className="mt-1 text-xs text-slate-400">Add a total or a bar chart below</p>
+                </div>
+              )}
+
+              {/* Add widget row */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleAddWidget('total')}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 py-3.5 text-sm font-medium text-slate-400 hover:border-[#1e3a6e] hover:text-[#1e3a6e] transition-colors"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Total
+                </button>
+                <button
+                  onClick={() => handleAddWidget('bar')}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 py-3.5 text-sm font-medium text-slate-400 hover:border-[#1e3a6e] hover:text-[#1e3a6e] transition-colors"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Bar Chart
+                </button>
+              </div>
             </div>
           )}
         </main>

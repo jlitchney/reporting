@@ -9,8 +9,10 @@ import {
   isWithinInterval,
   isBefore,
   isAfter,
+  startOfYear,
+  subDays,
 } from 'date-fns';
-import type { ParsedLead, ChartDataPoint, ChartQuery, GroupBy } from './types';
+import type { ParsedLead, ChartDataPoint, ChartQuery, GroupBy, DatePreset } from './types';
 
 function getPeriodStart(date: Date, groupBy: GroupBy): Date {
   switch (groupBy) {
@@ -117,6 +119,41 @@ export function processChartData(leads: ParsedLead[], query: ChartQuery): ChartD
 
 export function countLeadsWithTag(leads: ParsedLead[], tagLabel: string): number {
   return leads.filter((l) => l.tags.get(tagLabel)?.applied != null).length;
+}
+
+export const DATE_PRESET_LABELS: Record<DatePreset, string> = {
+  all_time: 'All Time',
+  this_year: 'This Year',
+  this_month: 'This Month',
+  last_30_days: 'Last 30 Days',
+  last_90_days: 'Last 90 Days',
+};
+
+function presetStart(preset: DatePreset): Date | null {
+  const now = new Date();
+  switch (preset) {
+    case 'all_time': return null;
+    case 'this_year': return startOfYear(now);
+    case 'this_month': return startOfMonth(now);
+    case 'last_30_days': return subDays(now, 30);
+    case 'last_90_days': return subDays(now, 90);
+  }
+}
+
+export function countLeadsForTotal(
+  leads: ParsedLead[],
+  metric: string | null,
+  preset: DatePreset = 'all_time'
+): number {
+  const start = presetStart(preset);
+  return leads.filter((lead) => {
+    const date = metric
+      ? lead.tags.get(metric)?.applied ?? null
+      : lead.createdDate;
+    if (metric && !lead.tags.get(metric)?.applied) return false;
+    if (start && (!date || isBefore(date, start))) return false;
+    return true;
+  }).length;
 }
 
 export function countLeadsWithFilters(leads: ParsedLead[], metric: string, filters: string[]): number {

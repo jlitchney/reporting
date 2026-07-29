@@ -36,6 +36,10 @@ export interface ChartDataPoint {
 
 export type GroupBy = 'week' | 'month' | 'quarter';
 
+export type WidgetType = 'total' | 'bar';
+
+export type DatePreset = 'all_time' | 'this_year' | 'this_month' | 'last_30_days' | 'last_90_days';
+
 export interface ChartQuery {
   metric: string | null;
   filters: string[];
@@ -43,10 +47,12 @@ export interface ChartQuery {
   groupBy: GroupBy;
   startDate: Date | null;
   endDate: Date | null;
+  datePreset?: DatePreset;
 }
 
 export interface ChartConfig {
   id: string;
+  type?: WidgetType;
   title: string;
   query: ChartQuery;
 }
