@@ -55,6 +55,7 @@ export type WidgetType = 'total' | 'bar' | 'pie' | 'line' | 'column' | 'stacked_
 export interface CostMetricDef {
   tagLabel: string;
   name: string;
+  dateField?: string; // 'created' | tag label — overrides global dateField for this metric
 }
 
 export type DatePreset = 'all_time' | 'this_year' | 'this_month' | 'last_30_days' | 'last_90_days' | 'custom';

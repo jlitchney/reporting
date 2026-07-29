@@ -84,6 +84,13 @@ export default function CostBarWidget({
   const updateMetricDefs = (defs: CostMetricDef[]) =>
     updateQuery({ costMetricDefs: defs, costMetric: undefined });
 
+  const moveMetric = (i: number, dir: -1 | 1) => {
+    const nd = [...metricDefs];
+    const j = i + dir;
+    [nd[i], nd[j]] = [nd[j], nd[i]];
+    updateMetricDefs(nd);
+  };
+
   const barColor = (i: number) => i === 0 ? accent : EXTRA_COLORS[(i - 1) % EXTRA_COLORS.length];
 
   // Build one data point per week with a key per metric
@@ -119,46 +126,90 @@ export default function CostBarWidget({
         <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Metrics</label>
         <div className="space-y-1.5">
           {metricDefs.map((def, i) => (
-            <div key={i} className="flex items-center gap-1.5">
-              <div className="h-3 w-3 flex-shrink-0 rounded-sm" style={{ background: barColor(i) }} />
-              <select
-                value={def.tagLabel}
-                onChange={(e) => {
-                  const nd = [...metricDefs];
-                  nd[i] = { ...def, tagLabel: e.target.value };
-                  updateMetricDefs(nd);
-                }}
-                className="min-w-0 flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-[#1e3a6e]"
-              >
-                <option value="">All Candidates</option>
-                {tagGroups.map((g) => (
-                  <optgroup key={g.name} label={g.name}>
-                    {g.tags.map((t) => (
-                      <option key={t.label} value={t.label}>{t.tag}</option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-              <input
-                type="text"
-                value={def.name}
-                onChange={(e) => {
-                  const nd = [...metricDefs];
-                  nd[i] = { ...def, name: e.target.value };
-                  updateMetricDefs(nd);
-                }}
-                placeholder="Label"
-                className="w-20 rounded border border-slate-200 px-2 py-1 text-xs text-slate-700 outline-none focus:border-[#1e3a6e]"
-              />
-              <button
-                onClick={() => updateMetricDefs(metricDefs.filter((_, j) => j !== i))}
-                className="rounded p-0.5 text-slate-300 transition-colors hover:text-red-400"
-                title="Remove metric"
-              >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+            <div key={i} className="rounded border border-slate-200 bg-slate-50/50 p-1.5 space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <div className="flex flex-col">
+                  <button
+                    onClick={() => moveMetric(i, -1)}
+                    disabled={i === 0}
+                    className="rounded p-0.5 text-slate-300 transition-colors hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-30"
+                    title="Move up"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => moveMetric(i, 1)}
+                    disabled={i === metricDefs.length - 1}
+                    className="rounded p-0.5 text-slate-300 transition-colors hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-30"
+                    title="Move down"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="h-3 w-3 flex-shrink-0 rounded-sm" style={{ background: barColor(i) }} />
+                <input
+                  type="text"
+                  value={def.name}
+                  onChange={(e) => {
+                    const nd = [...metricDefs];
+                    nd[i] = { ...def, name: e.target.value };
+                    updateMetricDefs(nd);
+                  }}
+                  placeholder="Label"
+                  className="min-w-0 flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-[#1e3a6e]"
+                />
+                <button
+                  onClick={() => updateMetricDefs(metricDefs.filter((_, j) => j !== i))}
+                  className="rounded p-0.5 text-slate-300 transition-colors hover:text-red-400"
+                  title="Remove metric"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="flex gap-1.5">
+                <select
+                  value={def.tagLabel}
+                  onChange={(e) => {
+                    const nd = [...metricDefs];
+                    nd[i] = { ...def, tagLabel: e.target.value };
+                    updateMetricDefs(nd);
+                  }}
+                  className="min-w-0 flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-[#1e3a6e]"
+                >
+                  <option value="">All Candidates</option>
+                  {tagGroups.map((g) => (
+                    <optgroup key={g.name} label={g.name}>
+                      {g.tags.map((t) => (
+                        <option key={t.label} value={t.label}>{t.tag}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <select
+                  value={def.dateField ?? ''}
+                  onChange={(e) => {
+                    const nd = [...metricDefs];
+                    nd[i] = { ...def, dateField: e.target.value || undefined };
+                    updateMetricDefs(nd);
+                  }}
+                  className="min-w-0 flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-[#1e3a6e]"
+                >
+                  <option value="">Creation date</option>
+                  {tagGroups.map((g) => (
+                    <optgroup key={g.name} label={g.name}>
+                      {g.tags.map((t) => (
+                        <option key={t.label} value={t.label}>{t.tag}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
             </div>
           ))}
           <button
@@ -185,25 +236,6 @@ export default function CostBarWidget({
           className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-[#1e3a6e]"
         >
           {tagGroups.map((g) => <option key={g.name} value={g.name}>{g.name}</option>)}
-        </select>
-      </div>
-
-      {/* Date by */}
-      <div>
-        <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Date by</label>
-        <select
-          value={query.dateField ?? 'created'}
-          onChange={(e) => updateQuery({ dateField: e.target.value })}
-          className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-[#1e3a6e]"
-        >
-          <option value="created">Creation date</option>
-          {tagGroups.map((g) => (
-            <optgroup key={g.name} label={g.name}>
-              {g.tags.map((t) => (
-                <option key={t.label} value={t.label}>{t.tag} — Applied date</option>
-              ))}
-            </optgroup>
-          ))}
         </select>
       </div>
 

@@ -424,26 +424,30 @@ export function computeCostMetrics(
   const sourceGroup = tagGroups.find((g) => g.name === sourceGroupName);
   if (!sourceGroup || metricDefs.length === 0) return [];
 
-  // dateField controls which date buckets a lead into a week (same as stacked bar)
-  const dateField = query.dateField ?? 'created';
-  const getLeadDate = (lead: ParsedLead): Date | null => {
-    if (dateField === 'created') return lead.createdDate;
-    return lead.tags.get(dateField)?.applied ?? null;
-  };
-
   const effectiveStart = query.datePreset && query.datePreset !== 'custom'
     ? resolvePreset(query.datePreset)
     : (query.startDate ?? null);
   const effectiveEnd = query.datePreset === 'custom' ? (query.endDate ?? null) : null;
 
-  // Collect bucketing dates to determine week range
+  // Each metric has its own dateField; falls back to query.dateField then 'created'
+  const resolveMetricDateField = (def: CostMetricDef) =>
+    def.dateField ?? query.dateField ?? 'created';
+
+  const getMetricDate = (lead: ParsedLead, df: string): Date | null => {
+    if (!df || df === 'created') return lead.createdDate;
+    return lead.tags.get(df)?.applied ?? null;
+  };
+
+  // Collect dates across all metrics to determine the overall week range
   const allDates: Date[] = [];
   for (const lead of leads) {
-    const d = getLeadDate(lead);
-    if (!d) continue;
-    if (effectiveStart && isBefore(d, effectiveStart)) continue;
-    if (effectiveEnd && isAfter(d, effectiveEnd)) continue;
-    allDates.push(d);
+    for (const def of metricDefs) {
+      const d = getMetricDate(lead, resolveMetricDateField(def));
+      if (!d) continue;
+      if (effectiveStart && isBefore(d, effectiveStart)) continue;
+      if (effectiveEnd && isAfter(d, effectiveEnd)) continue;
+      allDates.push(d);
+    }
   }
 
   if (allDates.length === 0) return [];
@@ -468,19 +472,14 @@ export function computeCostMetrics(
     const nextWeek = addWeeks(week, 1);
     const inWeek = (d: Date) => d.getTime() >= weekMs && d.getTime() < nextWeek.getTime();
 
-    // Leads bucketed into this week by dateField
-    const weekLeads = leads.filter((lead) => {
-      const d = getLeadDate(lead);
+    // A lead qualifies for a metric if its metric-specific dateField date falls in this
+    // week, and (for tag-based metrics) its tag was applied at any time
+    const qualifiesForMetric = (lead: ParsedLead, def: CostMetricDef) => {
+      const d = getMetricDate(lead, resolveMetricDateField(def));
       if (!d || !inWeek(d)) return false;
       if (effectiveStart && isBefore(d, effectiveStart)) return false;
       if (effectiveEnd && isAfter(d, effectiveEnd)) return false;
-      return true;
-    });
-
-    // A lead qualifies for a metric if its metric tag is applied at any time
-    // tagLabel === '' means "All Candidates" — every lead in the bucket qualifies
-    const qualifiesForMetric = (lead: ParsedLead, def: CostMetricDef) => {
-      if (def.tagLabel === '') return true;
+      if (def.tagLabel === '') return true; // All Candidates
       const entry = lead.tags.get(def.tagLabel);
       if (!entry?.applied) return false;
       if (query.excludeRemoved && entry.removed != null) return false;
@@ -498,7 +497,7 @@ export function computeCostMetrics(
     const sources: CostSourceRow[] = sourceGroup.tags.map((tag) => {
       const counts: Record<string, number> = {};
       for (const def of metricDefs) {
-        counts[def.name] = weekLeads.filter(
+        counts[def.name] = leads.filter(
           (lead) => qualifiesForMetric(lead, def) && getSource(lead) === tag.label
         ).length;
       }
@@ -513,7 +512,7 @@ export function computeCostMetrics(
 
     const organicCounts: Record<string, number> = {};
     for (const def of metricDefs) {
-      organicCounts[def.name] = weekLeads.filter(
+      organicCounts[def.name] = leads.filter(
         (lead) => qualifiesForMetric(lead, def) && getSource(lead) === null
       ).length;
     }
