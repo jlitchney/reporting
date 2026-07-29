@@ -15,7 +15,7 @@ import {
   differenceInDays,
   parseISO,
 } from 'date-fns';
-import type { ParsedLead, ChartDataPoint, ChartQuery, GroupBy, DatePreset, CriteriaFilter, FilterCondition, TagGroup } from './types';
+import type { ParsedLead, ChartDataPoint, ChartQuery, GroupBy, DatePreset, CriteriaFilter, FilterCondition, TagGroup, CostMetricDef } from './types';
 import type { SpendEntry } from './redis';
 
 function testCondition(lead: ParsedLead, cond: FilterCondition): boolean {
@@ -364,24 +364,20 @@ export function countLeadsWithFilters(leads: ParsedLead[], metric: string, filte
 export interface CostSourceRow {
   tagLabel: string;
   name: string;
-  applications: number;
-  candidates: number;
   spend: number;
-  costPerApp: number | null;
-  costPerCandidate: number | null;
+  counts: Record<string, number>;        // metric name → count
+  costPer: Record<string, number | null>; // metric name → spend/count
 }
 
 export interface CostMetricRow {
   weekOf: Date;
   weekLabel: string;
   sources: CostSourceRow[];
-  organic: { applications: number; candidates: number };
+  organicCounts: Record<string, number>;
   totals: {
-    applications: number;
-    candidates: number;
     spend: number;
-    costPerApp: number | null;
-    costPerCandidate: number | null;
+    counts: Record<string, number>;
+    costPer: Record<string, number | null>;
   };
 }
 
@@ -422,39 +418,35 @@ export function computeCostMetrics(
   spendData: SpendEntry[],
   tagGroups: TagGroup[],
   sourceGroupName: string,
-  appTagLabel: string,
+  metricDefs: CostMetricDef[],
   query: Pick<ChartQuery, 'datePreset' | 'startDate' | 'endDate' | 'excludeRemoved'>
 ): CostMetricRow[] {
   const sourceGroup = tagGroups.find((g) => g.name === sourceGroupName);
-  if (!sourceGroup) return [];
+  if (!sourceGroup || metricDefs.length === 0) return [];
 
   const effectiveStart = query.datePreset && query.datePreset !== 'custom'
     ? resolvePreset(query.datePreset)
     : (query.startDate ?? null);
   const effectiveEnd = query.datePreset === 'custom' ? (query.endDate ?? null) : null;
 
-  const filteredLeads = leads.filter((lead) => {
-    const appEntry = appTagLabel ? lead.tags.get(appTagLabel) : null;
-    const refDate = appEntry?.applied ?? lead.createdDate;
-    if (!refDate) return false;
-    if (effectiveStart && isBefore(refDate, effectiveStart)) return false;
-    if (effectiveEnd && isAfter(refDate, effectiveEnd)) return false;
-    return true;
-  });
-
-  if (filteredLeads.length === 0) return [];
-
-  const appDates: Date[] = [];
-  for (const lead of filteredLeads) {
-    const appEntry = appTagLabel ? lead.tags.get(appTagLabel) : null;
-    const d = appEntry?.applied ?? lead.createdDate;
-    if (d) appDates.push(d);
+  // Collect all metric-tag applied dates to determine week range
+  const allDates: Date[] = [];
+  for (const lead of leads) {
+    for (const def of metricDefs) {
+      const entry = lead.tags.get(def.tagLabel);
+      if (!entry?.applied) continue;
+      if (query.excludeRemoved && entry.removed != null) continue;
+      const d = entry.applied;
+      if (effectiveStart && isBefore(d, effectiveStart)) continue;
+      if (effectiveEnd && isAfter(d, effectiveEnd)) continue;
+      allDates.push(d);
+    }
   }
 
-  if (appDates.length === 0) return [];
+  if (allDates.length === 0) return [];
 
-  const minDate = appDates.reduce((a, b) => (isBefore(a, b) ? a : b));
-  const maxDate = appDates.reduce((a, b) => (isAfter(a, b) ? a : b));
+  const minDate = allDates.reduce((a, b) => (isBefore(a, b) ? a : b));
+  const maxDate = allDates.reduce((a, b) => (isAfter(a, b) ? a : b));
 
   const weekStart = startOfWeek(minDate, { weekStartsOn: 1 });
   const weekEnd = startOfWeek(maxDate, { weekStartsOn: 1 });
@@ -471,85 +463,90 @@ export function computeCostMetrics(
   for (const week of weeks) {
     const weekMs = week.getTime();
     const nextWeek = addWeeks(week, 1);
-
     const inWeek = (d: Date) => d.getTime() >= weekMs && d.getTime() < nextWeek.getTime();
 
-    const weekApps = filteredLeads.filter((lead) => {
-      if (!appTagLabel) return false;
-      const appEntry = lead.tags.get(appTagLabel);
-      if (!appEntry?.applied) return false;
-      if (query.excludeRemoved && appEntry.removed != null) return false;
-      return inWeek(appEntry.applied);
-    });
+    // Returns true if a lead's metric tag was applied in this week and passes filters
+    const qualifiesForMetric = (lead: ParsedLead, def: CostMetricDef) => {
+      const entry = lead.tags.get(def.tagLabel);
+      if (!entry?.applied || !inWeek(entry.applied)) return false;
+      if (query.excludeRemoved && entry.removed != null) return false;
+      if (effectiveStart && isBefore(entry.applied, effectiveStart)) return false;
+      if (effectiveEnd && isAfter(entry.applied, effectiveEnd)) return false;
+      return true;
+    };
 
-    const weekCandidates = filteredLeads.filter((lead) => {
-      const d = lead.createdDate;
-      if (!d) return false;
-      return inWeek(d);
-    });
-
-    if (weekApps.length === 0 && weekCandidates.length === 0) continue;
+    // Source attribution: first matching source tag on the lead
+    const getSource = (lead: ParsedLead) => {
+      for (const t of sourceGroup.tags) {
+        if (lead.tags.get(t.label)?.applied) return t.label;
+      }
+      return null;
+    };
 
     const sources: CostSourceRow[] = sourceGroup.tags.map((tag) => {
-      const appCount = weekApps.filter((lead) => {
-        for (const t of sourceGroup.tags) {
-          const e = lead.tags.get(t.label);
-          if (e?.applied) return t.label === tag.label;
-        }
-        return false;
-      }).length;
-
-      const candidateCount = weekCandidates.filter((lead) => {
-        for (const t of sourceGroup.tags) {
-          const e = lead.tags.get(t.label);
-          if (e?.applied) return t.label === tag.label;
-        }
-        return false;
-      }).length;
-
+      const counts: Record<string, number> = {};
+      for (const def of metricDefs) {
+        counts[def.name] = leads.filter(
+          (lead) => qualifiesForMetric(lead, def) && getSource(lead) === tag.label
+        ).length;
+      }
       const spend = spendForWeek(spendData, tag.label, week, nextWeek);
-      const costPerApp = spend > 0 && appCount > 0 ? spend / appCount : null;
-      const costPerCandidate = spend > 0 && candidateCount > 0 ? spend / candidateCount : null;
-
-      return {
-        tagLabel: tag.label,
-        name: tag.tag,
-        applications: appCount,
-        candidates: candidateCount,
-        spend,
-        costPerApp,
-        costPerCandidate,
-      };
+      const costPer: Record<string, number | null> = {};
+      for (const def of metricDefs) {
+        const c = counts[def.name];
+        costPer[def.name] = spend > 0 && c > 0 ? spend / c : null;
+      }
+      return { tagLabel: tag.label, name: tag.tag, spend, counts, costPer };
     });
 
-    const organicApps = weekApps.filter((lead) => {
-      return !sourceGroup.tags.some((t) => lead.tags.get(t.label)?.applied);
-    }).length;
+    const organicCounts: Record<string, number> = {};
+    for (const def of metricDefs) {
+      organicCounts[def.name] = leads.filter(
+        (lead) => qualifiesForMetric(lead, def) && getSource(lead) === null
+      ).length;
+    }
 
-    const organicCandidates = weekCandidates.filter((lead) => {
-      return !sourceGroup.tags.some((t) => lead.tags.get(t.label)?.applied);
-    }).length;
+    const hasData =
+      sources.some((s) => Object.values(s.counts).some((c) => c > 0)) ||
+      Object.values(organicCounts).some((c) => c > 0);
+    if (!hasData) continue;
 
-    const totalApps = sources.reduce((s, r) => s + r.applications, 0) + organicApps;
-    const totalCandidates = sources.reduce((s, r) => s + r.candidates, 0) + organicCandidates;
     const totalSpend = sources.reduce((s, r) => s + r.spend, 0);
-    const totalCostPerApp = totalSpend > 0 && totalApps > 0 ? totalSpend / totalApps : null;
-    const totalCostPerCandidate = totalSpend > 0 && totalCandidates > 0 ? totalSpend / totalCandidates : null;
+    const totalCounts: Record<string, number> = {};
+    const totalCostPer: Record<string, number | null> = {};
+    for (const def of metricDefs) {
+      const c = sources.reduce((s, r) => s + (r.counts[def.name] ?? 0), 0) + (organicCounts[def.name] ?? 0);
+      totalCounts[def.name] = c;
+      totalCostPer[def.name] = totalSpend > 0 && c > 0 ? totalSpend / c : null;
+    }
 
     rows.push({
       weekOf: week,
       weekLabel: format(week, 'M/d/yy'),
       sources,
-      organic: { applications: organicApps, candidates: organicCandidates },
-      totals: {
-        applications: totalApps,
-        candidates: totalCandidates,
-        spend: totalSpend,
-        costPerApp: totalCostPerApp,
-        costPerCandidate: totalCostPerCandidate,
-      },
+      organicCounts,
+      totals: { spend: totalSpend, counts: totalCounts, costPer: totalCostPer },
     });
   }
 
   return rows.sort((a, b) => a.weekOf.getTime() - b.weekOf.getTime());
+}
+
+export function processCostBarData(
+  leads: ParsedLead[],
+  spendData: SpendEntry[],
+  tagGroups: TagGroup[],
+  sourceGroupName: string,
+  metricDefs: CostMetricDef[],
+  selectedMetricName: string,
+  query: Pick<ChartQuery, 'datePreset' | 'startDate' | 'endDate' | 'excludeRemoved'>,
+): ChartDataPoint[] {
+  const rows = computeCostMetrics(leads, spendData, tagGroups, sourceGroupName, metricDefs, query);
+  return rows
+    .map((row) => ({
+      period: row.weekLabel,
+      count: row.totals.costPer[selectedMetricName] ?? 0,
+      periodStart: row.weekOf,
+    }))
+    .filter((d) => d.count > 0);
 }

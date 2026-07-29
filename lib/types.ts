@@ -50,7 +50,12 @@ export interface CriteriaFilter {
   logic: FilterLogicOp[]; // length = conditions.length - 1; logic[i] connects condition[i] and condition[i+1]
 }
 
-export type WidgetType = 'total' | 'bar' | 'pie' | 'line' | 'column' | 'stacked_bar' | 'table' | 'funnel' | 'cost';
+export type WidgetType = 'total' | 'bar' | 'pie' | 'line' | 'column' | 'stacked_bar' | 'table' | 'funnel' | 'cost' | 'cost_bar';
+
+export interface CostMetricDef {
+  tagLabel: string;
+  name: string;
+}
 
 export type DatePreset = 'all_time' | 'this_year' | 'this_month' | 'last_30_days' | 'last_90_days' | 'custom';
 
@@ -68,9 +73,11 @@ export interface ChartQuery {
   funnelStages?: string[];
   funnelStageLabels?: Record<string, string>;
   costSourceGroup?: string;
-  costMetric?: string;
-  costView?: 'applications' | 'candidates' | 'both';
+  costMetric?: string;                       // legacy — use costMetricDefs
+  costView?: 'applications' | 'candidates' | 'both'; // legacy
   costGroupBy?: 'week' | 'source';
+  costMetricDefs?: CostMetricDef[];
+  costSelectedMetric?: string;               // bar chart: which metric name to display
 }
 
 export interface ChartConfig {
