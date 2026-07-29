@@ -36,7 +36,7 @@ export default function TotalWidget({ data, config, accent, onUpdate, onRemove, 
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
-  const [configOpen, setConfigOpen] = useState(!query.metric && !readOnly);
+  const [configOpen, setConfigOpen] = useState(false);
 
   const criteria: CriteriaFilter = query.criteria ?? { conditions: [], logic: [] };
 
