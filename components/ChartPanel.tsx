@@ -12,6 +12,7 @@ interface ChartPanelProps {
   onUpdate: (id: string, updates: Partial<ChartConfig>) => void;
   onRemove: (id: string) => void;
   canRemove: boolean;
+  showDragHandle?: boolean;
 }
 
 const GROUP_OPTIONS: { label: string; value: GroupBy }[] = [
@@ -27,6 +28,7 @@ export default function ChartPanel({
   onUpdate,
   onRemove,
   canRemove,
+  showDragHandle,
 }: ChartPanelProps) {
   const { tagGroups, leads, dateRange } = data;
   const { id, title, query } = config;
@@ -54,6 +56,11 @@ export default function ChartPanel({
 
       {/* Card header */}
       <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
+        {showDragHandle && (
+          <div className="flex-shrink-0 cursor-grab text-slate-300 hover:text-slate-400 active:cursor-grabbing">
+            <GripIcon />
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           {editingTitle ? (
             <input
@@ -236,6 +243,16 @@ export default function ChartPanel({
         <ReportBarChart data={chartData} color={accent} />
       </div>
     </div>
+  );
+}
+
+function GripIcon() {
+  return (
+    <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor">
+      <circle cx="5" cy="4" r="1.5" /><circle cx="11" cy="4" r="1.5" />
+      <circle cx="5" cy="8" r="1.5" /><circle cx="11" cy="8" r="1.5" />
+      <circle cx="5" cy="12" r="1.5" /><circle cx="11" cy="12" r="1.5" />
+    </svg>
   );
 }
 

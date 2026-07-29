@@ -6,15 +6,26 @@ import { countLeadsForTotal, DATE_PRESET_LABELS } from '@/lib/dataProcessor';
 
 const PRESETS: DatePreset[] = ['all_time', 'this_year', 'this_month', 'last_30_days', 'last_90_days'];
 
+function GripIcon() {
+  return (
+    <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor">
+      <circle cx="5" cy="4" r="1.5" /><circle cx="11" cy="4" r="1.5" />
+      <circle cx="5" cy="8" r="1.5" /><circle cx="11" cy="8" r="1.5" />
+      <circle cx="5" cy="12" r="1.5" /><circle cx="11" cy="12" r="1.5" />
+    </svg>
+  );
+}
+
 interface TotalWidgetProps {
   data: ParsedData;
   config: ChartConfig;
   accent: string;
   onUpdate: (id: string, updates: Partial<ChartConfig>) => void;
   onRemove: (id: string) => void;
+  showDragHandle?: boolean;
 }
 
-export default function TotalWidget({ data, config, accent, onUpdate, onRemove }: TotalWidgetProps) {
+export default function TotalWidget({ data, config, accent, onUpdate, onRemove, showDragHandle }: TotalWidgetProps) {
   const { leads, tagGroups } = data;
   const { id, title, query } = config;
   const datePreset: DatePreset = query.datePreset ?? 'all_time';
@@ -41,7 +52,12 @@ export default function TotalWidget({ data, config, accent, onUpdate, onRemove }
       <div className="h-1 w-full" style={{ backgroundColor: accent }} />
       <div className="px-4 py-4">
         {/* Header row */}
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2">
+          {showDragHandle && (
+            <div className="mt-0.5 flex-shrink-0 cursor-grab text-slate-300 hover:text-slate-400 active:cursor-grabbing">
+              <GripIcon />
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             {editingTitle ? (
               <input

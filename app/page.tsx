@@ -5,46 +5,10 @@ import Sidebar from '@/components/Sidebar';
 import ChartPanel, { CHART_ACCENT_COLORS } from '@/components/ChartPanel';
 import TotalWidget from '@/components/TotalWidget';
 import TabBar from '@/components/TabBar';
+import AddChartModal from '@/components/AddChartModal';
 import { useClients } from '@/lib/useClients';
 import { clientNameFromFilename } from '@/lib/csvParser';
-import type { ChartConfig, WidgetType } from '@/lib/types';
-
-function newWidget(
-  data: NonNullable<ReturnType<typeof useClients>['parsedData']>,
-  type: WidgetType,
-  index: number
-): ChartConfig {
-  const tag = data.tagColumns[index % Math.max(data.tagColumns.length, 1)];
-  if (type === 'total') {
-    return {
-      id: `widget-${Date.now()}-${index}`,
-      type: 'total',
-      title: tag ? tag.tag : 'Total Leads',
-      query: {
-        metric: tag?.label ?? null,
-        filters: [],
-        dateField: tag?.label ?? 'created',
-        groupBy: 'week',
-        startDate: null,
-        endDate: null,
-        datePreset: 'all_time',
-      },
-    };
-  }
-  return {
-    id: `widget-${Date.now()}-${index}`,
-    type: 'bar',
-    title: tag ? `${tag.tag} over time` : 'New Chart',
-    query: {
-      metric: tag?.label ?? null,
-      filters: [],
-      dateField: tag?.label ?? 'created',
-      groupBy: 'week',
-      startDate: null,
-      endDate: null,
-    },
-  };
-}
+import type { ChartConfig } from '@/lib/types';
 
 export default function Home() {
   const {
@@ -119,13 +83,13 @@ export default function Home() {
     [activeClientId, activeTab, updateTabCharts]
   );
 
-  const handleAddWidget = useCallback(
-    (type: WidgetType) => {
-      if (!activeClientId || !activeTab || !parsedData) return;
-      const next = [...activeTab.chartConfigs, newWidget(parsedData, type, activeTab.chartConfigs.length)];
-      updateTabCharts(activeClientId, activeTab.id, next);
+  const handleAddFromModal = useCallback(
+    (config: Omit<ChartConfig, 'id'>) => {
+      if (!activeClientId || !activeTab) return;
+      const newConfig: ChartConfig = { ...config, id: `widget-${Date.now()}` };
+      updateTabCharts(activeClientId, activeTab.id, [...activeTab.chartConfigs, newConfig]);
     },
-    [activeClientId, activeTab, parsedData, updateTabCharts]
+    [activeClientId, activeTab, updateTabCharts]
   );
 
   const handleAddTab = useCallback(() => {
@@ -149,17 +113,46 @@ export default function Home() {
     [activeClientId, renameTab]
   );
 
-  const [addingWidget, setAddingWidget] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const widgets = activeTab?.chartConfigs ?? [];
   const totalWidgets = widgets.filter((w) => (w.type ?? 'bar') === 'total');
   const barWidgets = widgets.filter((w) => (w.type ?? 'bar') === 'bar');
 
-  // Assign accent colors globally across all widgets in order
   const accentFor = (id: string) => {
     const idx = widgets.findIndex((w) => w.id === id);
     return CHART_ACCENT_COLORS[idx % CHART_ACCENT_COLORS.length];
   };
+
+  const handleDrop = useCallback(
+    (targetId: string) => {
+      if (!dragId || dragId === targetId || !activeClientId || !activeTab) return;
+      const configs = activeTab.chartConfigs;
+      const fromIdx = configs.findIndex((c) => c.id === dragId);
+      const toIdx = configs.findIndex((c) => c.id === targetId);
+      if (fromIdx === -1 || toIdx === -1) return;
+      const next = [...configs];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      updateTabCharts(activeClientId, activeTab.id, next);
+      setDragId(null);
+      setDragOverId(null);
+    },
+    [dragId, activeClientId, activeTab, updateTabCharts]
+  );
+
+  const draggableProps = (id: string) => ({
+    draggable: true as const,
+    onDragStart: () => setDragId(id),
+    onDragOver: (e: React.DragEvent) => { e.preventDefault(); if (id !== dragId) setDragOverId(id); },
+    onDrop: () => handleDrop(id),
+    onDragEnd: () => { setDragId(null); setDragOverId(null); },
+  });
+
+  const dragClass = (id: string) =>
+    `${dragId === id ? 'opacity-40' : ''} ${dragOverId === id && dragId !== id ? 'ring-2 ring-[#1e3a6e]/40 rounded-lg' : ''}`;
 
   if (!hydrated) {
     return (
@@ -249,95 +242,65 @@ export default function Home() {
               {totalWidgets.length > 0 && (
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                   {totalWidgets.map((w) => (
-                    <TotalWidget
-                      key={w.id}
-                      data={parsedData}
-                      config={w}
-                      accent={accentFor(w.id)}
-                      onUpdate={handleUpdateChart}
-                      onRemove={handleRemoveChart}
-                    />
+                    <div key={w.id} {...draggableProps(w.id)} className={dragClass(w.id)}>
+                      <TotalWidget
+                        data={parsedData}
+                        config={w}
+                        accent={accentFor(w.id)}
+                        onUpdate={handleUpdateChart}
+                        onRemove={handleRemoveChart}
+                        showDragHandle
+                      />
+                    </div>
                   ))}
                 </div>
               )}
 
               {/* Bar chart widgets */}
               {barWidgets.map((w) => (
-                <ChartPanel
-                  key={w.id}
-                  data={parsedData}
-                  config={w}
-                  accent={accentFor(w.id)}
-                  onUpdate={handleUpdateChart}
-                  onRemove={handleRemoveChart}
-                  canRemove
-                />
+                <div key={w.id} {...draggableProps(w.id)} className={dragClass(w.id)}>
+                  <ChartPanel
+                    data={parsedData}
+                    config={w}
+                    accent={accentFor(w.id)}
+                    onUpdate={handleUpdateChart}
+                    onRemove={handleRemoveChart}
+                    canRemove
+                    showDragHandle
+                  />
+                </div>
               ))}
 
               {/* Empty state */}
               {widgets.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <p className="text-sm font-medium text-slate-500">This tab is empty</p>
-                  <p className="mt-1 text-xs text-slate-400">Add a total or a bar chart below</p>
+                  <p className="mt-1 text-xs text-slate-400">Add a chart below to get started</p>
                 </div>
               )}
 
-              {/* Add widget */}
-              {addingWidget ? (
-                <div className="rounded-lg border-2 border-dashed border-slate-200 p-4">
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Choose chart type</p>
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      onClick={() => { handleAddWidget('total'); setAddingWidget(false); }}
-                      className="flex flex-1 min-w-36 items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-left hover:border-[#1e3a6e] hover:shadow-sm transition-all"
-                    >
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-700">Total</p>
-                        <p className="text-xs text-slate-400">Single count with date range</p>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => { handleAddWidget('bar'); setAddingWidget(false); }}
-                      className="flex flex-1 min-w-36 items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-left hover:border-[#1e3a6e] hover:shadow-sm transition-all"
-                    >
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-700">Bar Chart</p>
-                        <p className="text-xs text-slate-400">Counts over time by period</p>
-                      </div>
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => setAddingWidget(false)}
-                    className="mt-3 text-xs text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setAddingWidget(true)}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 py-4 text-sm font-medium text-slate-400 hover:border-[#1e3a6e] hover:text-[#1e3a6e] transition-colors"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Add Chart
-                </button>
-              )}
+              {/* Add chart button */}
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 py-4 text-sm font-medium text-slate-400 hover:border-[#1e3a6e] hover:text-[#1e3a6e] transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Chart
+              </button>
             </div>
           )}
         </main>
       </div>
+
+      {showAddModal && parsedData && (
+        <AddChartModal
+          data={parsedData}
+          onAdd={handleAddFromModal}
+          onClose={() => setShowAddModal(false)}
+        />
+      )}
     </div>
   );
 }
