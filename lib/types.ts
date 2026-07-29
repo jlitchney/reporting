@@ -50,7 +50,7 @@ export interface CriteriaFilter {
   logic: FilterLogicOp[]; // length = conditions.length - 1; logic[i] connects condition[i] and condition[i+1]
 }
 
-export type WidgetType = 'total' | 'bar';
+export type WidgetType = 'total' | 'bar' | 'pie' | 'line' | 'column' | 'stacked_bar' | 'table' | 'funnel';
 
 export type DatePreset = 'all_time' | 'this_year' | 'this_month' | 'last_30_days' | 'last_90_days' | 'custom';
 
@@ -65,6 +65,7 @@ export interface ChartQuery {
   startDate: Date | null;
   endDate: Date | null;
   datePreset?: DatePreset;
+  funnelStages?: string[];
 }
 
 export interface ChartConfig {

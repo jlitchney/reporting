@@ -6,6 +6,12 @@ import ChartPanel, { CHART_ACCENT_COLORS } from '@/components/ChartPanel';
 import TotalWidget from '@/components/TotalWidget';
 import TabBar from '@/components/TabBar';
 import AddChartModal from '@/components/AddChartModal';
+import PieChartWidget from '@/components/PieChartWidget';
+import LineChartWidget from '@/components/LineChartWidget';
+import ColumnChartWidget from '@/components/ColumnChartWidget';
+import StackedBarWidget from '@/components/StackedBarWidget';
+import TableWidget from '@/components/TableWidget';
+import FunnelWidget from '@/components/FunnelWidget';
 import { useClients } from '@/lib/useClients';
 import { clientNameFromFilename } from '@/lib/csvParser';
 import type { ChartConfig } from '@/lib/types';
@@ -119,7 +125,7 @@ export default function Home() {
 
   const widgets = activeTab?.chartConfigs ?? [];
   const totalWidgets = widgets.filter((w) => (w.type ?? 'bar') === 'total');
-  const barWidgets = widgets.filter((w) => (w.type ?? 'bar') === 'bar');
+  const nonTotalWidgets = widgets.filter((w) => (w.type ?? 'bar') !== 'total');
 
   const accentFor = (id: string) => {
     const idx = widgets.findIndex((w) => w.id === id);
@@ -256,20 +262,33 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Bar chart widgets */}
-              {barWidgets.map((w) => (
-                <div key={w.id} {...draggableProps(w.id)} className={dragClass(w.id)}>
-                  <ChartPanel
-                    data={parsedData}
-                    config={w}
-                    accent={accentFor(w.id)}
-                    onUpdate={handleUpdateChart}
-                    onRemove={handleRemoveChart}
-                    canRemove
-                    showDragHandle
-                  />
-                </div>
-              ))}
+              {/* Non-total widgets rendered in their original order */}
+              {nonTotalWidgets.map((w) => {
+                const commonProps = {
+                  data: parsedData,
+                  config: w,
+                  accent: accentFor(w.id),
+                  onUpdate: handleUpdateChart,
+                  onRemove: handleRemoveChart,
+                  canRemove: true as const,
+                  showDragHandle: true as const,
+                };
+                let widget: React.ReactNode;
+                switch (w.type ?? 'bar') {
+                  case 'line':      widget = <LineChartWidget {...commonProps} />; break;
+                  case 'pie':       widget = <PieChartWidget {...commonProps} />; break;
+                  case 'column':    widget = <ColumnChartWidget {...commonProps} />; break;
+                  case 'stacked_bar': widget = <StackedBarWidget {...commonProps} />; break;
+                  case 'table':     widget = <TableWidget {...commonProps} />; break;
+                  case 'funnel':    widget = <FunnelWidget {...commonProps} />; break;
+                  default:          widget = <ChartPanel {...commonProps} />;
+                }
+                return (
+                  <div key={w.id} {...draggableProps(w.id)} className={dragClass(w.id)}>
+                    {widget}
+                  </div>
+                );
+              })}
 
               {/* Empty state */}
               {widgets.length === 0 && (

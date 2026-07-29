@@ -1,0 +1,115 @@
+'use client';
+
+import { useState, type ReactNode } from 'react';
+
+interface WidgetShellProps {
+  accent: string;
+  title: string;
+  canRemove: boolean;
+  showDragHandle?: boolean;
+  badge?: string | number;
+  onTitleSave: (t: string) => void;
+  onRemove: () => void;
+  configPanel?: ReactNode;
+  children: ReactNode;
+}
+
+export default function WidgetShell({
+  accent,
+  title,
+  canRemove,
+  showDragHandle,
+  badge,
+  onTitleSave,
+  onRemove,
+  configPanel,
+  children,
+}: WidgetShellProps) {
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(title);
+  const [configOpen, setConfigOpen] = useState(false);
+
+  const commitTitle = () => { onTitleSave(titleDraft); setEditingTitle(false); };
+
+  return (
+    <div className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200/80">
+      <div className="h-1 w-full" style={{ backgroundColor: accent }} />
+
+      <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
+        {showDragHandle && (
+          <div className="flex-shrink-0 cursor-grab text-slate-300 hover:text-slate-400 active:cursor-grabbing">
+            <GripIcon />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          {editingTitle ? (
+            <input
+              autoFocus
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onBlur={commitTitle}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitTitle();
+                if (e.key === 'Escape') setEditingTitle(false);
+              }}
+              className="w-full rounded border border-slate-300 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-slate-600 outline-none focus:ring-2 focus:ring-blue-200"
+            />
+          ) : (
+            <button
+              onClick={() => { setTitleDraft(title); setEditingTitle(true); }}
+              className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-700 transition-colors text-left truncate block w-full"
+              title="Click to rename"
+            >
+              {title}
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {badge != null && (
+            <span className="mr-1 text-xs font-semibold text-slate-700">{badge}</span>
+          )}
+          {configPanel !== undefined && (
+            <button
+              onClick={() => setConfigOpen((v) => !v)}
+              title="Configure"
+              className={`rounded p-1 transition-colors ${configOpen ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+              </svg>
+            </button>
+          )}
+          {canRemove && (
+            <button
+              onClick={onRemove}
+              title="Remove chart"
+              className="rounded p-1 text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-colors"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {configOpen && configPanel && (
+        <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
+          {configPanel}
+        </div>
+      )}
+
+      {children}
+    </div>
+  );
+}
+
+function GripIcon() {
+  return (
+    <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor">
+      <circle cx="5" cy="4" r="1.5" /><circle cx="11" cy="4" r="1.5" />
+      <circle cx="5" cy="8" r="1.5" /><circle cx="11" cy="8" r="1.5" />
+      <circle cx="5" cy="12" r="1.5" /><circle cx="11" cy="12" r="1.5" />
+    </svg>
+  );
+}

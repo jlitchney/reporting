@@ -157,9 +157,12 @@ export function processTagGroupChart(
   tagGroupName: string,
   query: ChartQuery
 ): ChartDataPoint[] {
-  const { metric, filters, criteria, startDate, endDate } = query;
+  const { metric, filters, criteria, startDate, endDate, datePreset } = query;
   const group = tagGroups.find((g) => g.name === tagGroupName);
   if (!group) return [];
+
+  const effectiveStart = datePreset && datePreset !== 'custom' ? presetStart(datePreset) : (startDate ?? null);
+  const effectiveEnd = datePreset === 'custom' ? (endDate ?? null) : null;
 
   return group.tags.map((tag) => {
     const count = leads.filter((lead) => {
@@ -168,10 +171,10 @@ export function processTagGroupChart(
       if (query.excludeRemoved && tagEntry.removed != null) return false;
       if (metric && !lead.tags.get(metric)?.applied) return false;
 
-      if (startDate || endDate) {
+      if (effectiveStart || effectiveEnd) {
         const date = metric ? lead.tags.get(metric)?.applied ?? null : lead.createdDate;
-        if (startDate && (!date || isBefore(date, startDate))) return false;
-        if (endDate && date && isAfter(date, endDate)) return false;
+        if (effectiveStart && (!date || isBefore(date, effectiveStart))) return false;
+        if (effectiveEnd && date && isAfter(date, effectiveEnd)) return false;
       }
 
       if (criteria && criteria.conditions.length > 0) return evaluateCriteria(lead, criteria);
@@ -182,6 +185,110 @@ export function processTagGroupChart(
       return true;
     }).length;
     return { period: tag.tag, count };
+  });
+}
+
+export type StackedBarDataPoint = { period: string; periodStart?: Date; [key: string]: any };
+
+export function processStackedBarChart(
+  leads: ParsedLead[],
+  tagGroups: TagGroup[],
+  stackGroupName: string,
+  query: ChartQuery
+): StackedBarDataPoint[] {
+  const stackGroup = tagGroups.find((g) => g.name === stackGroupName);
+  if (!stackGroup || stackGroup.tags.length === 0) return [];
+
+  const { metric, filters, dateField, groupBy, datePreset, startDate, endDate, excludeRemoved } = query;
+  const effectiveStart = datePreset && datePreset !== 'custom' ? presetStart(datePreset) : (startDate ?? null);
+  const effectiveEnd = datePreset === 'custom' ? (endDate ?? null) : null;
+
+  const periodData = new Map<number, Map<string, number>>();
+
+  for (const lead of leads) {
+    if (metric && !lead.tags.get(metric)?.applied) continue;
+
+    let groupDate: Date | null;
+    if (dateField === 'created') {
+      groupDate = lead.createdDate;
+    } else {
+      groupDate = lead.tags.get(dateField)?.applied ?? null;
+    }
+    if (!groupDate) continue;
+    if (effectiveStart && isBefore(groupDate, effectiveStart)) continue;
+    if (effectiveEnd && isAfter(groupDate, effectiveEnd)) continue;
+
+    let passesFilters = true;
+    for (const f of filters) {
+      if (f === metric) continue;
+      if (!lead.tags.get(f)?.applied) { passesFilters = false; break; }
+    }
+    if (!passesFilters) continue;
+
+    const periodStart = getPeriodStart(groupDate, groupBy);
+    const key = periodStart.getTime();
+    if (!periodData.has(key)) periodData.set(key, new Map());
+    const periodMap = periodData.get(key)!;
+
+    for (const tag of stackGroup.tags) {
+      const tagEntry = lead.tags.get(tag.label);
+      if (!tagEntry?.applied) continue;
+      if (excludeRemoved && tagEntry.removed != null) continue;
+      periodMap.set(tag.label, (periodMap.get(tag.label) ?? 0) + 1);
+    }
+  }
+
+  if (periodData.size === 0) return [];
+
+  const allKeys = Array.from(periodData.keys()).sort((a, b) => a - b);
+  const rangeStart = effectiveStart ? getPeriodStart(effectiveStart, groupBy) : new Date(allKeys[0]);
+  const rangeEnd = effectiveEnd ? getPeriodStart(effectiveEnd, groupBy) : new Date(allKeys[allKeys.length - 1]);
+  const periods = generateAllPeriods(rangeStart, rangeEnd, groupBy);
+
+  return periods.map((pStart) => {
+    const key = pStart.getTime();
+    const periodMap = periodData.get(key) ?? new Map<string, number>();
+    const entry: StackedBarDataPoint = { period: formatPeriod(pStart, groupBy), periodStart: pStart };
+    for (const tag of stackGroup.tags) {
+      entry[tag.label] = periodMap.get(tag.label) ?? 0;
+    }
+    return entry;
+  });
+}
+
+export interface FunnelDataPoint {
+  label: string;
+  tagLabel: string;
+  count: number;
+}
+
+export function processFunnelChart(
+  leads: ParsedLead[],
+  funnelStages: string[],
+  tagGroups: TagGroup[],
+  query: ChartQuery
+): FunnelDataPoint[] {
+  if (!funnelStages.length) return [];
+  const { datePreset, startDate, endDate, excludeRemoved } = query;
+  const effectiveStart = datePreset && datePreset !== 'custom' ? presetStart(datePreset) : (startDate ?? null);
+  const effectiveEnd = datePreset === 'custom' ? (endDate ?? null) : null;
+
+  const labelFor = (lbl: string) =>
+    tagGroups.flatMap((g) => g.tags).find((t) => t.label === lbl)?.tag ?? lbl;
+
+  return funnelStages.map((tagLabel) => {
+    const count = leads.filter((lead) => {
+      const tagEntry = lead.tags.get(tagLabel);
+      if (!tagEntry?.applied) return false;
+      if (excludeRemoved && tagEntry.removed != null) return false;
+      if (effectiveStart || effectiveEnd) {
+        const date = lead.createdDate;
+        if (effectiveStart && (!date || isBefore(date, effectiveStart))) return false;
+        if (effectiveEnd && date && isAfter(date, effectiveEnd)) return false;
+      }
+      return true;
+    }).length;
+    return { label: labelFor(tagLabel), tagLabel, count };
   });
 }
 
