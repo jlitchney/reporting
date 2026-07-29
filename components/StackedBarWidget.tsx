@@ -122,6 +122,22 @@ export default function StackedBarWidget({ data, config, accent, onUpdate, onRem
       </div>
 
       <div className="flex flex-col gap-1">
+        <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Date by</label>
+        <select
+          value={query.dateField ?? 'created'}
+          onChange={(e) => updateQuery({ dateField: e.target.value })}
+          className="rounded border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
+        >
+          <option value="created">Creation date</option>
+          {tagGroups.map((g) => (
+            <optgroup key={g.name} label={g.name}>
+              {g.tags.map((t) => <option key={t.label} value={t.label}>{t.tag} — Applied date</option>)}
+            </optgroup>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex flex-col gap-1">
         <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Filter by</label>
         <select value="" onChange={(e) => { const val = e.target.value; if (val && !query.filters.includes(val)) updateQuery({ filters: [...query.filters, val] }); }} className="rounded border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200">
           <option value="">+ Add filter</option>
