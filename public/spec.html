@@ -182,6 +182,7 @@
     <a href="#csv-format">CSV Format</a>
     <a href="#api">API Routes</a>
     <a href="#storage">Storage</a>
+    <a href="#spend">Ad Spend</a>
     <div class="divider"></div>
     <a href="#state">State Management</a>
     <a href="#widgets">Widget System</a>
@@ -209,10 +210,11 @@
     <ul>
       <li>Upload or refresh a CSV for any client at any time</li>
       <li>Multiple report tabs per client, each independently configured</li>
-      <li>8 widget types: Total count, Bar chart, Line chart, Column chart, Stacked bar, Pie chart, Table, Funnel</li>
-      <li>Per-widget: accent color, width (¼/½/¾/Full), chart height (S/M/L/XL), per-series colors</li>
-      <li>Drag-and-drop reordering of all widgets</li>
+      <li>10 widget types: Total, Bar, Line, Column, Stacked Bar, Pie, Table, Funnel, Cost Table, Cost Bar Chart</li>
+      <li>Per-widget: accent color (palette + custom hex picker), width (¼/½/¾/Full), chart height, per-series colors</li>
+      <li>Drag-and-drop reordering of all widgets; drag-to-resize width and height</li>
       <li>Filter by tag, date range (preset or custom), exclude-removed toggle</li>
+      <li>Ad spend entry per source with automatic weekly proration; cost-per-metric charts and tables</li>
     </ul>
 
     <!-- TECH STACK -->
@@ -225,8 +227,8 @@
       <tr><td>Charts</td><td>Recharts</td><td>Bar, Line, Pie, Stacked Bar</td></tr>
       <tr><td>CSV parsing</td><td>PapaParse</td><td>Client-side parse after fetch</td></tr>
       <tr><td>CSV storage</td><td>Vercel Blob (private)</td><td>One blob per client</td></tr>
-      <tr><td>Config storage</td><td>Upstash Redis (KV)</td><td>Client metadata + chart configs</td></tr>
-      <tr><td>Date math</td><td>date-fns</td><td>Period grouping, presets</td></tr>
+      <tr><td>Config storage</td><td>Upstash Redis (KV)</td><td>Client metadata + chart configs + spend data</td></tr>
+      <tr><td>Date math</td><td>date-fns</td><td>Period grouping, presets, spend proration</td></tr>
     </table>
 
     <!-- ARCHITECTURE -->
@@ -243,6 +245,7 @@
 │         │                                           │
 │         ├─ Sidebar (client list + add)              │
 │         ├─ TabBar  (tabs per client)                │
+│         ├─ SpendManager (modal, "Manage Spend")     │
 │         └─ Widget grid                              │
 │              ├─ TotalWidget                         │
 │              ├─ ChartPanel (bar, line)              │
@@ -251,7 +254,9 @@
 │              ├─ StackedBarWidget                    │
 │              ├─ PieChartWidget                      │
 │              ├─ TableWidget                         │
-│              └─ FunnelWidget                        │
+│              ├─ FunnelWidget                        │
+│              ├─ CostTableWidget                     │
+│              └─ CostBarWidget                       │
 │                                                     │
 └────────────────────────┬────────────────────────────┘
                          │ REST
@@ -260,15 +265,16 @@
         │  POST   /api/clients            │  ← upload new client CSV
         │  GET    /api/clients            │  ← list all clients
         │  GET    /api/clients/[id]       │  ← get single client config
-        │  PATCH  /api/clients/[id]       │  ← save name / tabs / configs
+        │  PATCH  /api/clients/[id]       │  ← save name / tabs / configs / spendData
         │  DELETE /api/clients/[id]       │  ← remove client
         │  PUT    /api/clients/[id]/csv   │  ← replace CSV
         │  GET    /api/clients/[id]/csv   │  ← stream CSV for parsing
         └────────┬────────────────┬───────┘
                  │                │
         Vercel Blob         Upstash Redis
-        (private CSV)       (client metadata
-                             + chart configs)
+        (private CSV)       (client metadata,
+                             chart configs,
+                             spend data)
 </span></code></pre>
 
     <div class="callout info">
@@ -300,32 +306,54 @@
   query:         <span class="ty">ChartQuery</span>;
   color?:        <span class="ty">string</span>;               <span class="cm">// hex accent color</span>
   colSpan?:      <span class="num">1</span> | <span class="num">2</span> | <span class="num">3</span> | <span class="num">4</span>;         <span class="cm">// grid columns (4-col grid = ¼/½/¾/Full)</span>
-  chartHeight?:  <span class="ty">number</span>;              <span class="cm">// px: 200/300/400/500</span>
+  chartHeight?:  <span class="ty">number</span>;              <span class="cm">// px, user-set via drag or preset</span>
   seriesColors?: <span class="ty">Record</span>&lt;<span class="ty">string</span>, <span class="ty">string</span>&gt;; <span class="cm">// tagLabel → hex (pie/stacked bar)</span>
 }</code></pre>
 
     <h4>ChartQuery</h4>
 <pre><code><span class="kw">interface</span> <span class="ty">ChartQuery</span> {
-  metric:        <span class="ty">string</span> | <span class="kw">null</span>;  <span class="cm">// tag label, "__all__" for all candidates, or null (unset)</span>
-  filters:       <span class="ty">string</span>[];        <span class="cm">// tag labels that must be applied</span>
-  criteria?:     <span class="ty">CriteriaFilter</span>;  <span class="cm">// advanced AND/OR filter (Total widget)</span>
-  dateField:     <span class="ty">string</span>;          <span class="cm">// "created" or a tag label</span>
-  groupBy:       <span class="ty">GroupBy</span>;         <span class="cm">// "week" | "month" | "quarter"</span>
-  tagGroupAxis?: <span class="ty">string</span>;          <span class="cm">// tag group name → X axis shows tags, not time</span>
-  excludeRemoved?: <span class="ty">boolean</span>;      <span class="cm">// only count if tag has no Removed date</span>
-  startDate:     <span class="ty">Date</span> | <span class="kw">null</span>;
-  endDate:       <span class="ty">Date</span> | <span class="kw">null</span>;
-  datePreset?:   <span class="ty">DatePreset</span>;      <span class="cm">// "all_time" | "this_year" | "this_month" | "last_30_days" | "last_90_days" | "custom"</span>
-  funnelStages?: <span class="ty">string</span>[];        <span class="cm">// ordered tag labels (Funnel widget)</span>
+  metric:           <span class="ty">string</span> | <span class="kw">null</span>;  <span class="cm">// tag label, or null (unset)</span>
+  filters:          <span class="ty">string</span>[];        <span class="cm">// tag labels that must be applied</span>
+  criteria?:        <span class="ty">CriteriaFilter</span>;  <span class="cm">// advanced AND/OR filter (Total widget)</span>
+  dateField:        <span class="ty">string</span>;          <span class="cm">// "created" or a tag label</span>
+  groupBy:          <span class="ty">GroupBy</span>;         <span class="cm">// "week" | "month" | "quarter"</span>
+  tagGroupAxis?:    <span class="ty">string</span>;          <span class="cm">// tag group name → X axis shows tags, not time</span>
+  excludeRemoved?:  <span class="ty">boolean</span>;
+  startDate:        <span class="ty">Date</span> | <span class="kw">null</span>;
+  endDate:          <span class="ty">Date</span> | <span class="kw">null</span>;
+  datePreset?:      <span class="ty">DatePreset</span>;
+
+  <span class="cm">// Funnel widget</span>
+  funnelStages?:    <span class="ty">string</span>[];
+
+  <span class="cm">// Cost widgets</span>
+  costSourceGroup?: <span class="ty">string</span>;          <span class="cm">// tag group used for source attribution</span>
+  costMetricDefs?:  <span class="ty">CostMetricDef</span>[]; <span class="cm">// user-defined metrics (tag + name)</span>
+  costSelectedMetric?: <span class="ty">string</span>;       <span class="cm">// cost_bar: which metric name to display</span>
+  costGroupBy?:     <span class="str">'week'</span> | <span class="str">'source'</span>; <span class="cm">// cost table: weekly breakdown vs source summary</span>
 }</code></pre>
 
-    <h4>StoredClient</h4>
+    <h4>CostMetricDef</h4>
+<pre><code><span class="kw">interface</span> <span class="ty">CostMetricDef</span> {
+  tagLabel: <span class="ty">string</span>; <span class="cm">// tag to count; '' means "All Candidates" (count by createdDate)</span>
+  name:     <span class="ty">string</span>; <span class="cm">// display label, e.g. "Applications", "Hired", "Pre-screen Pass"</span>
+}</code></pre>
+
+    <h4>StoredClient / SpendEntry</h4>
 <pre><code><span class="kw">interface</span> <span class="ty">StoredClient</span> {
-  id:          <span class="ty">string</span>;       <span class="cm">// "client-{timestamp}"</span>
+  id:          <span class="ty">string</span>;          <span class="cm">// "client-{timestamp}"</span>
   name:        <span class="ty">string</span>;
-  blobUrl:     <span class="ty">string</span>;       <span class="cm">// Vercel Blob private URL (never sent to browser)</span>
+  blobUrl:     <span class="ty">string</span>;          <span class="cm">// Vercel Blob private URL (never sent to browser)</span>
   tabs:        <span class="ty">ClientTab</span>[];
-  lastUpdated: <span class="ty">string</span>;       <span class="cm">// ISO timestamp</span>
+  lastUpdated: <span class="ty">string</span>;          <span class="cm">// ISO timestamp</span>
+  spendData?:  <span class="ty">SpendEntry</span>[];    <span class="cm">// per-source ad spend periods</span>
+}
+
+<span class="kw">interface</span> <span class="ty">SpendEntry</span> {
+  source:    <span class="ty">string</span>;  <span class="cm">// tag label matching a source group tag</span>
+  startDate: <span class="ty">string</span>;  <span class="cm">// 'YYYY-MM-DD'</span>
+  endDate:   <span class="ty">string</span>;  <span class="cm">// 'YYYY-MM-DD'</span>
+  amount:    <span class="ty">number</span>;  <span class="cm">// total spend for this period</span>
 }
 
 <span class="kw">interface</span> <span class="ty">ClientTab</span> {
@@ -357,7 +385,7 @@
 <span class="str">"TagGroup > Tag Applied UTC"</span>
 <span class="str">"TagGroup&gt;Tag Applied UTC"</span>   <span class="cm">// no spaces around &gt;</span>
 
-<span class="cm">// Corresponding removed date columns (same name with "Removed" suffix):</span>
+<span class="cm">// Corresponding removed date columns:</span>
 <span class="str">"TagGroup > Tag Removed UTC"</span></code></pre>
 
     <p>
@@ -407,8 +435,8 @@
       </tr>
       <tr>
         <td><span class="badge patch">PATCH</span></td>
-        <td>Update name or tabs/chart configs</td>
-        <td>JSON: <code>{ name? }</code> or <code>{ tabs? }</code></td>
+        <td>Update name, tabs/chart configs, or spend data</td>
+        <td>JSON: <code>{ name? }</code>, <code>{ tabs? }</code>, or <code>{ spendData? }</code></td>
         <td>Updated client object</td>
       </tr>
       <tr>
@@ -450,16 +478,58 @@
        When a client is deleted the blob is also deleted. Private blobs require server-side
        proxying to serve (handled by the <code>/csv</code> API route).</p>
 
-    <h3>Upstash Redis — client metadata &amp; configs</h3>
+    <h3>Upstash Redis — client metadata, configs &amp; spend data</h3>
     <p>Client records are stored in Redis (<code>lib/redis.ts</code>). The entire
-    <code>StoredClient</code> object (including all tabs and chart configs) is serialized as a single
-    Redis key per client. Functions exposed: <code>listClients()</code>, <code>saveClient()</code>,
-    <code>getClient()</code>, <code>deleteClient()</code>.</p>
+    <code>StoredClient</code> object (including all tabs, chart configs, and spend entries) is
+    serialized as a single Redis key per client. Functions exposed: <code>listClients()</code>,
+    <code>saveClient()</code>, <code>getClient()</code>, <code>deleteClient()</code>.</p>
 
     <div class="callout info">
       Chart config changes are debounced 800 ms before writing to Redis to avoid hammering the
       database during rapid slider/toggle interactions.
     </div>
+
+    <!-- AD SPEND -->
+    <h2 id="spend">Ad Spend</h2>
+    <p>
+      The Manage Spend modal (<code>components/SpendManager.tsx</code>) lets project managers enter
+      ad spend per source for any date range. Amounts are stored as <code>SpendEntry[]</code> on the
+      client record in Redis and passed as a prop to all cost widgets.
+    </p>
+
+    <h3>Data entry</h3>
+    <p>
+      Each period row has a start date, end date, and a dollar amount per source tag. When saved,
+      only rows with at least one non-zero amount are persisted. The source group (tag group whose
+      tags map to spend sources) is selectable in the modal.
+    </p>
+
+    <h3>Weekly proration (<code>spendForWeek</code>)</h3>
+    <p>
+      Cost widgets work in weekly buckets. When a spend entry spans multiple weeks, its amount is
+      prorated by day overlap:
+    </p>
+<pre><code><span class="cm">// overlap days between [weekStart, weekEnd) and [entryStart, entryEnd)</span>
+spend_for_week = entry.amount × (overlap_days / total_entry_days)</code></pre>
+    <p>
+      This means PMs can enter one entry for an entire campaign period (e.g. June 1–30) and the
+      system automatically distributes it across ~4.3 weeks. Spend date ranges do not need to align
+      to calendar weeks.
+    </p>
+
+    <h3>Cost metrics</h3>
+    <p>
+      Each cost widget defines one or more <code>CostMetricDef</code> objects. For each metric, the
+      system counts leads per source whose metric tag was applied in that week. A special
+      <code>tagLabel = ''</code> means "All Candidates" — leads are counted by
+      <code>createdDate</code> instead of a tag applied date.
+    </p>
+    <p>Cost per metric is computed as:</p>
+<pre><code>cost_per_metric = weekly_spend_for_source / count_of_metric_leads_for_source</code></pre>
+    <p>
+      Source attribution: a lead is assigned to the first source tag (within the configured source
+      group) that has been applied to it. Leads with no source tag are counted as "Organic."
+    </p>
 
     <!-- STATE MANAGEMENT -->
     <h2 id="state">State Management</h2>
@@ -468,7 +538,7 @@
 
     <table>
       <tr><th>State</th><th>Type</th><th>Notes</th></tr>
-      <tr><td><code>clients</code></td><td><code>StoredClient[]</code></td><td>Full client list</td></tr>
+      <tr><td><code>clients</code></td><td><code>StoredClient[]</code></td><td>Full client list, includes spendData</td></tr>
       <tr><td><code>activeClientId</code></td><td><code>string | null</code></td><td>Selected client</td></tr>
       <tr><td><code>activeTabId</code></td><td><code>string | null</code></td><td>Selected tab</td></tr>
       <tr><td><code>parsedData</code></td><td><code>ParsedData | null</code></td><td>Parsed CSV, in-memory only</td></tr>
@@ -480,37 +550,50 @@
     <code>ParsedData</code> for the session lifetime. Switching clients re-uses the cache; uploading
     a new CSV invalidates the cache entry for that client.</p>
 
+    <p><strong>Spend data:</strong> <code>useClients()</code> exposes an <code>updateSpend(clientId, SpendEntry[])</code>
+    callback that calls <code>PATCH /api/clients/[id]</code> with <code>{ spendData }</code>. The
+    active client's <code>spendData</code> is passed directly to cost widgets as a prop.</p>
+
     <!-- WIDGET SYSTEM -->
     <h2 id="widgets">Widget System</h2>
 
     <h3>WidgetShell</h3>
     <p>
-      <code>WidgetShell</code> is a shared wrapper used by 6 of the 8 widget types. It provides the
+      <code>WidgetShell</code> is a shared wrapper used by most widget types. It provides the
       standard chrome: colored accent strip, drag handle, editable title, gear button (config panel),
-      and remove button.
+      and remove button. It also hosts the resize drag handles.
     </p>
     <p>The gear panel renders in two sections separated by a divider:</p>
     <ol>
       <li><strong>configPanel</strong> — widget-specific query controls (passed as a prop)</li>
-      <li><strong>AppearanceControls</strong> — color picker, width toggle (¼/½/¾/Full), height toggle (S/M/L/XL)</li>
+      <li><strong>AppearanceControls</strong> — color picker, width toggle, height toggle</li>
     </ol>
     <p>
       <code>ChartPanel</code> (bar/line chart) and <code>PieChartWidget</code> do not use
-      <code>WidgetShell</code> — they have their own equivalent header/config implementations with
-      <code>AppearanceControls</code> called directly.
+      <code>WidgetShell</code> — they have their own equivalent header/config implementations.
     </p>
 
     <h3>AppearanceControls</h3>
     <p>Shared component (<code>components/AppearanceControls.tsx</code>) that renders:</p>
     <ul>
-      <li>12-color palette picker → saves to <code>config.color</code></li>
-      <li>Width toggle (¼=1, ½=2, ¾=3, Full=4) → saves to <code>config.colSpan</code> (4-column grid)</li>
-      <li>Height toggle (S=200, M=300, L=400, XL=500) → saves to <code>config.chartHeight</code></li>
+      <li>12-color palette + rainbow circle that opens the browser's native <code>&lt;input type="color"&gt;</code> for any custom hex</li>
+      <li>Width toggle (¼=1, ½=2, ¾=3, Full=4) → saves to <code>config.colSpan</code></li>
+      <li>Height toggle (S/M/L/XL) → saves to <code>config.chartHeight</code></li>
     </ul>
+
+    <h3>Drag-to-resize</h3>
+    <p>
+      <code>WidgetShell</code> renders two invisible drag handles that appear on hover:
+    </p>
+    <ul>
+      <li><strong>Bottom edge</strong> — drag vertically to set <code>chartHeight</code> (100–800 px, snapped to 5 px)</li>
+      <li><strong>Right edge</strong> — drag horizontally to set <code>colSpan</code> (1–4), computed from the widget's rendered pixel width</li>
+    </ul>
+    <p>Both use <code>mousedown/mousemove/mouseup</code> on the document with a <code>useRef</code> to capture the initial position.</p>
 
     <h3>SeriesColorPicker</h3>
     <p>Used by <code>StackedBarWidget</code> and <code>PieChartWidget</code> to assign per-series
-    colors. Each series row is expandable to show the 12-color palette. Colors saved to
+    colors. Each series row is expandable to show the 12-color palette + custom hex picker. Colors saved to
     <code>config.seriesColors</code> as <code>Record&lt;tagLabel, hexColor&gt;</code>.</p>
 
     <!-- WIDGET TYPES -->
@@ -539,7 +622,7 @@
       <div class="widget-card">
         <div class="wname">Stacked Bar</div>
         <div class="wtype">'stacked_bar'</div>
-        <div class="wdesc">Time-series stacked bars, one series per tag in the selected group. Per-series color customization.</div>
+        <div class="wdesc">Time-series stacked bars, one series per tag in the selected group. Per-series color customization. "Date by" selector.</div>
       </div>
       <div class="widget-card">
         <div class="wname">Pie Chart</div>
@@ -556,19 +639,31 @@
         <div class="wtype">'funnel'</div>
         <div class="wdesc">Ordered stages. Each stage is a tag label. Shows step-to-step conversion % and overall conversion rate.</div>
       </div>
+      <div class="widget-card">
+        <div class="wname">Cost Table</div>
+        <div class="wtype">'cost'</div>
+        <div class="wdesc">Weekly or by-source breakdown of spend, metric counts, and cost-per-metric for each source. Supports multiple user-defined metrics.</div>
+      </div>
+      <div class="widget-card">
+        <div class="wname">Cost Bar Chart</div>
+        <div class="wtype">'cost_bar'</div>
+        <div class="wdesc">Bar chart of cost-per-metric by week across all sources combined. Supports multiple metrics; user picks which to display.</div>
+      </div>
     </div>
 
     <h3>Widget type config reference</h3>
     <table>
       <tr><th>Type</th><th>Key query fields</th><th>Special</th></tr>
       <tr><td><code>'total'</code></td><td><code>metric</code>, <code>datePreset</code>, <code>filters</code>, <code>criteria</code></td><td>CriteriaBuilder for AND/OR</td></tr>
-      <tr><td><code>'bar'</code></td><td><code>metric</code> (or <code>'__all__'</code>), <code>groupBy</code>, <code>tagGroupAxis?</code></td><td>Two X-axis modes</td></tr>
-      <tr><td><code>'line'</code></td><td><code>metric</code> (or <code>'__all__'</code>), <code>groupBy</code>, <code>datePreset</code></td><td>—</td></tr>
+      <tr><td><code>'bar'</code></td><td><code>metric</code>, <code>groupBy</code>, <code>tagGroupAxis?</code></td><td>Two X-axis modes; All Candidates</td></tr>
+      <tr><td><code>'line'</code></td><td><code>metric</code>, <code>groupBy</code>, <code>datePreset</code></td><td>All Candidates</td></tr>
       <tr><td><code>'column'</code></td><td><code>tagGroupAxis</code>, <code>filters</code>, <code>datePreset</code></td><td>Height = data-driven unless overridden</td></tr>
-      <tr><td><code>'stacked_bar'</code></td><td><code>tagGroupAxis</code> (stack group), <code>groupBy</code>, <code>filters</code></td><td><code>seriesColors</code> per tag</td></tr>
+      <tr><td><code>'stacked_bar'</code></td><td><code>tagGroupAxis</code>, <code>groupBy</code>, <code>dateField</code>, <code>filters</code></td><td><code>seriesColors</code>; "Date by" dropdown</td></tr>
       <tr><td><code>'pie'</code></td><td><code>tagGroupAxis</code>, <code>filters</code>, <code>datePreset</code></td><td><code>seriesColors</code> per slice</td></tr>
       <tr><td><code>'table'</code></td><td><code>tagGroupAxis</code>, <code>filters</code>, <code>datePreset</code></td><td>Max-height scroll when chartHeight set</td></tr>
       <tr><td><code>'funnel'</code></td><td><code>funnelStages[]</code>, <code>datePreset</code></td><td>Bar height scales to <code>chartHeight</code></td></tr>
+      <tr><td><code>'cost'</code></td><td><code>costSourceGroup</code>, <code>costMetricDefs[]</code>, <code>costGroupBy</code>, <code>datePreset</code></td><td>Weekly or by-source view; multiple metrics</td></tr>
+      <tr><td><code>'cost_bar'</code></td><td><code>costSourceGroup</code>, <code>costMetricDefs[]</code>, <code>costSelectedMetric</code>, <code>datePreset</code></td><td>One metric displayed at a time</td></tr>
     </table>
 
     <!-- DATA PROCESSING -->
@@ -591,7 +686,7 @@
       <tr>
         <td><code>processStackedBarChart</code></td>
         <td>leads + stackGroupName + query</td>
-        <td><code>StackedBarDataPoint[]</code> — dynamic keys per tag label</td>
+        <td><code>StackedBarDataPoint[]</code> — dynamic keys per tag label; first matching source tag wins (no double-counting)</td>
       </tr>
       <tr>
         <td><code>processFunnelChart</code></td>
@@ -603,14 +698,30 @@
         <td>leads + metric + preset + filters + criteria</td>
         <td><code>number</code></td>
       </tr>
+      <tr>
+        <td><code>computeCostMetrics</code></td>
+        <td>leads + spendData + tagGroups + sourceGroupName + metricDefs[] + query</td>
+        <td><code>CostMetricRow[]</code> — weekly rows with per-source counts, spend, and cost-per-metric for each defined metric</td>
+      </tr>
+      <tr>
+        <td><code>processCostBarData</code></td>
+        <td>leads + spendData + tagGroups + sourceGroupName + metricDefs[] + selectedMetricName + query</td>
+        <td><code>ChartDataPoint[]</code> — weekly total cost-per-metric (all sources combined)</td>
+      </tr>
     </table>
 
     <h3>All Candidates mode</h3>
     <p>
-      Setting <code>query.metric = '__all__'</code> in time-series charts counts all candidates by
-      <code>createdDate</code> (no tag filter). This sentinel value is recognized in
-      <code>processChartData</code>. <code>metric = null</code> (unset) still returns empty data
-      to show the "please configure" empty state.
+      In time-series charts, passing an empty string or <code>'__all__'</code> as the metric counts
+      all candidates by <code>createdDate</code>. In cost widgets, a <code>CostMetricDef</code> with
+      <code>tagLabel = ''</code> also counts by <code>createdDate</code> rather than a tag applied date.
+    </p>
+
+    <h3>Stacked bar double-count prevention</h3>
+    <p>
+      Leads often have multiple source tags. In <code>processStackedBarChart</code>, each lead is
+      attributed to the <em>first</em> matching tag in the stack group — a <code>break</code> after
+      the first hit ensures the lead is only counted once across all series.
     </p>
 
     <h3>Date preset resolution</h3>
@@ -635,6 +746,17 @@
       <code>chartConfigs</code> array is reordered and saved to Redis.
     </p>
 
+    <h3>Drag-to-resize</h3>
+    <p>
+      Each widget has two invisible resize handles that appear on hover (via Tailwind
+      <code>group/group-hover</code>):
+    </p>
+    <ul>
+      <li><strong>Bottom edge handle</strong> — <code>cursor-row-resize</code>; dragging vertically updates <code>chartHeight</code> (clamped 100–800 px, snapped to 5 px)</li>
+      <li><strong>Right edge handle</strong> — <code>cursor-col-resize</code>; dragging horizontally computes a new <code>colSpan</code> (1–4) based on the widget's rendered pixel width and the column width at drag start</li>
+    </ul>
+    <p>Implemented in <code>WidgetShell</code> using <code>useRef</code> + <code>mousedown/mousemove/mouseup</code> listeners on <code>document</code>.</p>
+
     <h3>Title editing</h3>
     <p>Clicking a widget title in the header activates an inline input. Blur or Enter commits;
     Escape cancels. The new title is saved immediately via <code>onUpdate(id, { title })</code>.</p>
@@ -643,18 +765,32 @@
     <p>The gear icon toggles a collapsible panel below the widget header. Widget-specific controls
     are rendered first; the appearance section (color/size) follows, separated by a divider.</p>
 
+    <h3>Manage Spend modal</h3>
+    <p>
+      Triggered by the "Manage Spend" button in the app header. Shows a table of free-form period rows
+      (start date, end date, per-source dollar amounts). Add/remove rows freely. On Save, valid rows are
+      converted to <code>SpendEntry[]</code> and persisted via <code>updateSpend()</code>. The modal
+      closes on Save, Cancel, or clicking the backdrop.
+    </p>
+
     <!-- ADDING WIDGETS -->
     <h2 id="adding-widgets">Adding a New Widget Type</h2>
     <p>To add a new widget type to the system:</p>
     <ol>
       <li>Add the type string to the <code>WidgetType</code> union in <code>lib/types.ts</code></li>
-      <li>Add any new query fields to <code>ChartQuery</code> if needed</li>
+      <li>Add any new query fields to <code>ChartQuery</code> (or a new interface) if needed</li>
       <li>Add a data processor function to <code>lib/dataProcessor.ts</code></li>
       <li>Create <code>components/YourWidget.tsx</code> using <code>WidgetShell</code> for the chrome</li>
       <li>Add a <code>case 'your_type'</code> to the switch in <code>app/page.tsx</code></li>
       <li>Add a card to the <code>TYPE_META</code> array in <code>components/AddChartModal.tsx</code></li>
-      <li>Handle the new type in <code>handleAdd()</code> in <code>AddChartModal.tsx</code> to build the initial <code>ChartQuery</code></li>
+      <li>Add the type to <code>TYPE_STEP_LABEL</code> and <code>autoTitle()</code> in <code>AddChartModal.tsx</code></li>
     </ol>
+
+    <div class="callout info">
+      <strong>Cost widgets need spendData.</strong> If your widget needs ad spend, add
+      <code>spendData: SpendEntry[]</code> as a prop and pass <code>activeClient?.spendData ?? []</code>
+      from <code>app/page.tsx</code>.
+    </div>
   </main>
 
 </div>
