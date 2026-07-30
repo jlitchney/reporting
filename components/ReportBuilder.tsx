@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { upload } from '@vercel/blob/client';
 import type { ChartConfig, ClientTab, ParsedData } from '@/lib/types';
 import type { ReportConfig, ReportPage, ReportHistoryEntry } from '@/lib/types';
 import type { StoredClient, SpendEntry } from '@/lib/useClients';
@@ -1011,12 +1010,17 @@ export default function ReportBuilder({
     if (!file) return;
     setCoverUploading(true);
     try {
-      const blob = await upload(
-        `report-covers/${client.id}-cover-${Date.now()}.jpg`,
-        file,
-        { access: 'public', handleUploadUrl: '/api/upload-token' }
-      );
-      updateConfig({ coverImageUrl: blob.url });
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/upload-image', { method: 'POST', body: form });
+      if (!res.ok) {
+        const { error } = await res.json();
+        throw new Error(error ?? 'Upload failed');
+      }
+      const { url } = await res.json();
+      updateConfig({ coverImageUrl: url });
+    } catch (err) {
+      alert(`Cover photo upload failed: ${(err as Error).message}`);
     } finally {
       setCoverUploading(false);
       if (coverFileRef.current) coverFileRef.current.value = '';
@@ -1032,12 +1036,17 @@ export default function ReportBuilder({
     if (!file) return;
     setLogoUploading(true);
     try {
-      const blob = await upload(
-        `client-logos/${client.id}-logo-${Date.now()}.${file.name.split('.').pop()}`,
-        file,
-        { access: 'public', handleUploadUrl: '/api/upload-token' }
-      );
-      updateConfig({ clientLogoUrl: blob.url });
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/upload-image', { method: 'POST', body: form });
+      if (!res.ok) {
+        const { error } = await res.json();
+        throw new Error(error ?? 'Upload failed');
+      }
+      const { url } = await res.json();
+      updateConfig({ clientLogoUrl: url });
+    } catch (err) {
+      alert(`Logo upload failed: ${(err as Error).message}`);
     } finally {
       setLogoUploading(false);
       if (logoFileRef.current) logoFileRef.current.value = '';
