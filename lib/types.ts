@@ -108,3 +108,20 @@ export interface ClientTab {
   name: string;
   chartConfigs: ChartConfig[];
 }
+
+export interface ReportPage {
+  id: string;
+  type: 'chart' | 'summary';
+  chartId?: string;  // for type='chart', references ChartConfig.id in the active tab
+  title?: string;    // optional title override
+}
+
+export interface ReportConfig {
+  coverTitle: string;
+  coverSubtitle: string;
+  coverDateRange: string;
+  coverBgColor: string;
+  pages: ReportPage[];
+  takeaways: string;
+  takeawaysBullets: string;  // newline-separated bullet points for left column
+}

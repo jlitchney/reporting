@@ -16,6 +16,7 @@ import SpendManager from '@/components/SpendManager';
 import CostTableWidget from '@/components/CostTableWidget';
 import CostBarWidget from '@/components/CostBarWidget';
 import ComparisonBarWidget from '@/components/ComparisonBarWidget';
+import ReportBuilder from '@/components/ReportBuilder';
 import { useClients } from '@/lib/useClients';
 import { clientNameFromFilename } from '@/lib/csvParser';
 import type { ChartConfig } from '@/lib/types';
@@ -40,6 +41,7 @@ export default function Home() {
     renameTab,
     removeClient,
     updateSpend,
+    updateReportConfig,
   } = useClients();
 
   const refreshInputRef = useRef<HTMLInputElement>(null);
@@ -141,6 +143,7 @@ export default function Home() {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSpendManager, setShowSpendManager] = useState(false);
+  const [showReportBuilder, setShowReportBuilder] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
@@ -230,6 +233,15 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 Manage Spend
+              </button>
+              <button
+                onClick={() => setShowReportBuilder(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Report
               </button>
               <label className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#1e3a6e] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#16305e] transition-colors">
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -371,6 +383,17 @@ export default function Home() {
           spendData={activeClient?.spendData ?? []}
           onSave={(data) => updateSpend(activeClientId, data)}
           onClose={() => setShowSpendManager(false)}
+        />
+      )}
+
+      {showReportBuilder && activeClient && activeTab && parsedData && (
+        <ReportBuilder
+          client={activeClient}
+          activeTab={activeTab}
+          parsedData={parsedData}
+          spendData={activeClient.spendData ?? []}
+          onClose={() => setShowReportBuilder(false)}
+          onSave={(config) => updateReportConfig(activeClient.id, config)}
         />
       )}
     </div>

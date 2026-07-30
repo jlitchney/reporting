@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis';
-import type { ChartConfig, ClientTab } from './types';
+import type { ChartConfig, ClientTab, ReportConfig } from './types';
 
 export interface SpendEntry {
   source: string;
@@ -17,6 +17,7 @@ export interface ClientRecord {
   chartConfigs?: ChartConfig[]; // legacy
   lastUpdated: string;
   spendData?: SpendEntry[];
+  reportConfig?: ReportConfig;
 }
 
 function getRedis() {
