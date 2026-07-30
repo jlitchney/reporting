@@ -93,7 +93,7 @@ export default function CostBarWidget({
     updateMetricDefs(nd);
   };
 
-  const barColor = (i: number) => i === 0 ? accent : EXTRA_COLORS[(i - 1) % EXTRA_COLORS.length];
+  const barColor = (i: number) => metricDefs[i]?.color ?? (i === 0 ? accent : EXTRA_COLORS[(i - 1) % EXTRA_COLORS.length]);
 
   // Build one data point per week with a key per metric
   const chartData = useMemo(() => {
@@ -152,7 +152,17 @@ export default function CostBarWidget({
                     </svg>
                   </button>
                 </div>
-                <div className="h-3 w-3 flex-shrink-0 rounded-sm" style={{ background: barColor(i) }} />
+                <input
+                  type="color"
+                  value={def.color ?? (i === 0 ? accent : EXTRA_COLORS[(i - 1) % EXTRA_COLORS.length])}
+                  onChange={(e) => {
+                    const nd = [...metricDefs];
+                    nd[i] = { ...def, color: e.target.value };
+                    updateMetricDefs(nd);
+                  }}
+                  className="h-6 w-6 flex-shrink-0 cursor-pointer rounded border border-slate-200 p-0.5"
+                  title="Pick color"
+                />
                 <input
                   type="text"
                   value={def.name}

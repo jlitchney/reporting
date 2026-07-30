@@ -56,6 +56,7 @@ export interface CostMetricDef {
   tagLabel: string;
   name: string;
   dateField?: string; // 'created' | tag label — overrides global dateField for this metric
+  color?: string;
 }
 
 export type DatePreset = 'all_time' | 'this_year' | 'this_month' | 'last_30_days' | 'last_90_days' | 'custom';
