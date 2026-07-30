@@ -292,23 +292,20 @@ export function processFunnelChart(
     tagGroups.flatMap((g) => g.tags).find((t) => t.label === lbl)?.tag ??
     lbl;
 
-  return funnelStages.map((tagLabel) => {
+  // Each stage counts leads that pass ALL stages up to and including this one (cumulative funnel)
+  return funnelStages.map((tagLabel, idx) => {
+    const stagesUpToHere = funnelStages.slice(0, idx + 1);
     const count = leads.filter((lead) => {
-      if (tagLabel === '__all__') {
-        if (effectiveStart || effectiveEnd) {
-          const date = lead.createdDate;
-          if (effectiveStart && (!date || isBefore(date, effectiveStart))) return false;
-          if (effectiveEnd && date && isAfter(date, effectiveEnd)) return false;
-        }
-        return true;
-      }
-      const tagEntry = lead.tags.get(tagLabel);
-      if (!tagEntry?.applied) return false;
-      if (excludeRemoved && tagEntry.removed != null) return false;
       if (effectiveStart || effectiveEnd) {
         const date = lead.createdDate;
         if (effectiveStart && (!date || isBefore(date, effectiveStart))) return false;
         if (effectiveEnd && date && isAfter(date, effectiveEnd)) return false;
+      }
+      for (const stage of stagesUpToHere) {
+        if (stage === '__all__') continue;
+        const tagEntry = lead.tags.get(stage);
+        if (!tagEntry?.applied) return false;
+        if (excludeRemoved && tagEntry.removed != null) return false;
       }
       return true;
     }).length;
