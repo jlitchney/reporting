@@ -52,6 +52,13 @@ export interface CriteriaFilter {
 
 export type WidgetType = 'total' | 'bar' | 'pie' | 'line' | 'column' | 'stacked_bar' | 'table' | 'funnel' | 'cost' | 'cost_bar' | 'comparison_bar';
 
+export interface ComparisonSeries {
+  id: string;
+  label: string;
+  tagLabel: string; // '' = no extra filter (count all leads with the position tag)
+  color?: string;
+}
+
 export interface CostMetricDef {
   tagLabel: string;
   name: string;
@@ -81,6 +88,7 @@ export interface ChartQuery {
   costMetricDefs?: CostMetricDef[];
   costSelectedMetric?: string;               // bar chart: which metric name to display
   costSourceFilters?: string[];              // tag labels within source group to include; empty/absent = all
+  comparisonSeries?: ComparisonSeries[];
 }
 
 export interface ChartConfig {

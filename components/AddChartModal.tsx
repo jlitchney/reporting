@@ -129,6 +129,9 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
         datePreset,
         funnelStages: type === 'funnel' ? funnelStages : undefined,
         costMetricDefs: type === 'cost_bar' ? [{ tagLabel: '', name: 'All Candidates' }] : undefined,
+        comparisonSeries: type === 'comparison_bar'
+          ? [{ id: 'default', label: 'Total', tagLabel: '' }]
+          : undefined,
       },
     });
     onClose();
