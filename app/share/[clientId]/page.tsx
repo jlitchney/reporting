@@ -16,12 +16,14 @@ import CostBarWidget from '@/components/CostBarWidget';
 import CostTableWidget from '@/components/CostTableWidget';
 import ComparisonBarWidget from '@/components/ComparisonBarWidget';
 import type { ParsedData, ChartConfig, ClientTab } from '@/lib/types';
+import type { SpendEntry } from '@/lib/redis';
 
 interface ClientData {
   id: string;
   name: string;
   tabs: ClientTab[];
   lastUpdated: string;
+  spendData?: SpendEntry[];
 }
 
 const noop = () => {};
@@ -171,8 +173,8 @@ export default function SharePage() {
                 case 'stacked_bar':     widget = <StackedBarWidget {...commonProps} />; break;
                 case 'table':           widget = <TableWidget {...commonProps} />; break;
                 case 'funnel':          widget = <FunnelWidget {...commonProps} />; break;
-                case 'cost_bar':        widget = <CostBarWidget {...commonProps} />; break;
-                case 'cost':            widget = <CostTableWidget {...commonProps} />; break;
+                case 'cost_bar':        widget = <CostBarWidget {...commonProps} spendData={client.spendData ?? []} />; break;
+                case 'cost':            widget = <CostTableWidget {...commonProps} spendData={client.spendData ?? []} />; break;
                 case 'comparison_bar':  widget = <ComparisonBarWidget {...commonProps} />; break;
                 default:                widget = <ChartPanel {...commonProps} />;
               }
