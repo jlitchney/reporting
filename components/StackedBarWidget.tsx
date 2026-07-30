@@ -231,7 +231,7 @@ export default function StackedBarWidget({ data, config, accent, onUpdate, onRem
               </BarChart>
             </ResponsiveContainer>
             {stackGroup && (
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+              <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1">
                 {stackGroup.tags.map((tag, idx) => (
                   <div key={tag.label} className="flex items-center gap-1.5 text-xs text-slate-500">
                     <span className="h-2.5 w-2.5 flex-shrink-0 rounded-sm" style={{ backgroundColor: seriesColor(tag.label, idx) }} />
