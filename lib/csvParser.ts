@@ -44,8 +44,23 @@ function parseDate(val: string): Date | null {
   return null;
 }
 
+// Direct-download files group all UTM columns under "Utm Sources" with the type
+// (Campaign/Medium/Source) embedded in the tag name:
+//   "Utm Sources>Campaign Entry Level Applied UTC"
+// Normalise to the three-group format the app uses:
+//   "UTM_Campaign>Entry Level Applied UTC"
+function normalizeUtmHeaders(csvText: string): string {
+  const nl = csvText.indexOf('\n');
+  if (nl === -1) return csvText;
+  const header = csvText.slice(0, nl).replace(
+    /Utm Sources>(Campaign|Medium|Source) (.+?) (Applied|Removed)(?: UTC)?/g,
+    'UTM_$1>$2 $3 UTC',
+  );
+  return header + csvText.slice(nl);
+}
+
 export function parseCSV(csvText: string, clientName: string): ParsedData {
-  const result = Papa.parse<Record<string, string>>(csvText, {
+  const result = Papa.parse<Record<string, string>>(normalizeUtmHeaders(csvText), {
     header: true,
     skipEmptyLines: true,
   });
