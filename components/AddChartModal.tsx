@@ -229,7 +229,7 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
                   {funnelStages.length > 0 && (
                     <div className="mb-2 space-y-1">
                       {funnelStages.map((tagLabel, idx) => {
-                        const tagName = allTags.find((t) => t.label === tagLabel)?.tag ?? tagLabel;
+                        const tagName = tagLabel === '__all__' ? 'All Candidates' : (allTags.find((t) => t.label === tagLabel)?.tag ?? tagLabel);
                         return (
                           <div key={tagLabel} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
                             <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500">{idx + 1}</span>
@@ -246,6 +246,7 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
                     className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#1e3a6e] focus:ring-2 focus:ring-[#1e3a6e]/20"
                   >
                     <option value="">+ Add stage…</option>
+                    {!funnelStages.includes('__all__') && <option value="__all__">All Candidates</option>}
                     {tagGroups.map((g) => {
                       const available = g.tags.filter((t) => !funnelStages.includes(t.label));
                       if (!available.length) return null;

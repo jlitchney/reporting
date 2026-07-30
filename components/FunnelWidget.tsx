@@ -46,7 +46,7 @@ export default function FunnelWidget({ data, config, accent, onUpdate, onRemove,
         {funnelStages.length > 0 && (
           <div className="mb-2 space-y-1">
             {funnelStages.map((tagLabel, idx) => {
-              const tagName = allTags.find((t) => t.label === tagLabel)?.tag ?? tagLabel;
+              const tagName = tagLabel === '__all__' ? 'All Candidates' : (allTags.find((t) => t.label === tagLabel)?.tag ?? tagLabel);
               const customLabel = query.funnelStageLabels?.[tagLabel] ?? '';
               return (
                 <div key={tagLabel} className="flex items-center gap-2 rounded border border-slate-200 bg-white px-2.5 py-1.5">
@@ -78,6 +78,7 @@ export default function FunnelWidget({ data, config, accent, onUpdate, onRemove,
           className="w-full rounded border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
         >
           <option value="">+ Add stage…</option>
+          {!funnelStages.includes('__all__') && <option value="__all__">All Candidates</option>}
           {tagGroups.map((g) => {
             const available = g.tags.filter((t) => !funnelStages.includes(t.label));
             if (!available.length) return null;

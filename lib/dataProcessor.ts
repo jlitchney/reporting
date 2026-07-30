@@ -285,11 +285,20 @@ export function processFunnelChart(
 
   const labelFor = (lbl: string) =>
     query.funnelStageLabels?.[lbl] ??
+    (lbl === '__all__' ? 'All Candidates' : null) ??
     tagGroups.flatMap((g) => g.tags).find((t) => t.label === lbl)?.tag ??
     lbl;
 
   return funnelStages.map((tagLabel) => {
     const count = leads.filter((lead) => {
+      if (tagLabel === '__all__') {
+        if (effectiveStart || effectiveEnd) {
+          const date = lead.createdDate;
+          if (effectiveStart && (!date || isBefore(date, effectiveStart))) return false;
+          if (effectiveEnd && date && isAfter(date, effectiveEnd)) return false;
+        }
+        return true;
+      }
       const tagEntry = lead.tags.get(tagLabel);
       if (!tagEntry?.applied) return false;
       if (excludeRemoved && tagEntry.removed != null) return false;
