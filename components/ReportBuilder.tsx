@@ -57,8 +57,8 @@ function accentForWidget(widget: ChartConfig, allWidgets: ChartConfig[]): string
   return CHART_ACCENT_COLORS[Math.max(0, idx) % CHART_ACCENT_COLORS.length];
 }
 
-function buildDefaultConfig(client: StoredClient, activeTab: ClientTab): ReportConfig {
-  const nonTotalCharts = activeTab.chartConfigs.filter(
+function buildDefaultConfig(client: StoredClient, tab: ClientTab): ReportConfig {
+  const nonTotalCharts = tab.chartConfigs.filter(
     (w) => (w.type ?? 'bar') !== 'total' && w.showInReport !== false
   );
   const pages: ReportPage[] = [
@@ -70,6 +70,8 @@ function buildDefaultConfig(client: StoredClient, activeTab: ClientTab): ReportC
     })),
   ];
   return {
+    reportName: `${client.name} — ${tab.name} Report`,
+    tabId: tab.id,
     coverTitle: 'Weekly Report',
     coverSubtitle: client.name,
     coverDateRange: getWeekRange(),
@@ -256,6 +258,7 @@ function SummaryPageRender({
   accent,
   pageNum,
   totalPages,
+  clientLogoUrl,
 }: {
   config: ReportConfig;
   activeTab: ClientTab;
@@ -263,6 +266,7 @@ function SummaryPageRender({
   accent: string;
   pageNum: number;
   totalPages: number;
+  clientLogoUrl?: string;
 }) {
   const totalWidgets = activeTab.chartConfigs.filter(
     (w) => (w.type ?? 'bar') === 'total'
@@ -284,6 +288,9 @@ function SummaryPageRender({
         style={{
           padding: '24px 40px',
           borderBottom: '1px solid #f1f5f9',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
         }}
       >
         <h1
@@ -298,6 +305,14 @@ function SummaryPageRender({
         >
           Campaign at a Glance
         </h1>
+        {clientLogoUrl && (
+          <img
+            src={clientLogoUrl}
+            alt=""
+            style={{ height: 36, objectFit: 'contain', maxWidth: 160 }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        )}
       </div>
       <div style={{ flex: 1, padding: 40 }}>
         {totalWidgets.length > 0 ? (
@@ -350,6 +365,7 @@ function ChartPageRender({
   spendData,
   pageNum,
   totalPages,
+  clientLogoUrl,
 }: {
   config: ReportConfig;
   page: ReportPage;
@@ -361,6 +377,7 @@ function ChartPageRender({
   spendData: SpendEntry[];
   pageNum: number;
   totalPages: number;
+  clientLogoUrl?: string;
 }) {
   const layout = page.layout ?? '1-chart';
   const isTwoChart = layout === '2-charts' && !!chartConfig2;
@@ -382,7 +399,7 @@ function ChartPageRender({
         }}
       >
         <div style={{ height: 8, backgroundColor: accent }} />
-        <div style={{ padding: '20px 40px', borderBottom: '1px solid #f1f5f9' }}>
+        <div style={{ padding: '20px 40px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h1
             style={{
               fontSize: 20,
@@ -395,6 +412,14 @@ function ChartPageRender({
           >
             {pageTitle}
           </h1>
+          {clientLogoUrl && (
+            <img
+              src={clientLogoUrl}
+              alt=""
+              style={{ height: 32, objectFit: 'contain', maxWidth: 140 }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          )}
         </div>
         <div
           style={{
@@ -450,6 +475,9 @@ function ChartPageRender({
         style={{
           padding: '20px 40px',
           borderBottom: '1px solid #f1f5f9',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
         }}
       >
         <h1
@@ -464,6 +492,14 @@ function ChartPageRender({
         >
           {pageTitle}
         </h1>
+        {clientLogoUrl && (
+          <img
+            src={clientLogoUrl}
+            alt=""
+            style={{ height: 32, objectFit: 'contain', maxWidth: 140 }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        )}
       </div>
       <div
         style={{
@@ -493,12 +529,14 @@ function NotesPageRender({
   pageNum,
   totalPages,
   clientName,
+  clientLogoUrl,
 }: {
   page: ReportPage;
   accent: string;
   pageNum: number;
   totalPages: number;
   clientName: string;
+  clientLogoUrl?: string;
 }) {
   return (
     <div
@@ -512,8 +550,18 @@ function NotesPageRender({
       }}
     >
       <div style={{ height: 8, backgroundColor: accent, flexShrink: 0 }} />
+      {clientLogoUrl && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 40px 0', flexShrink: 0 }}>
+          <img
+            src={clientLogoUrl}
+            alt=""
+            style={{ height: 32, objectFit: 'contain', maxWidth: 140 }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        </div>
+      )}
       <div
-        style={{ flex: 1, padding: '32px 48px', overflow: 'hidden' }}
+        style={{ flex: 1, padding: clientLogoUrl ? '16px 48px 32px' : '32px 48px', overflow: 'hidden' }}
         dangerouslySetInnerHTML={{
           __html: page.notesContent ?? '<p style="color:#94a3b8">Notes page — add content in the editor.</p>',
         }}
@@ -532,11 +580,13 @@ function TakeawaysPageRender({
   accent,
   pageNum,
   totalPages,
+  clientLogoUrl,
 }: {
   config: ReportConfig;
   accent: string;
   pageNum: number;
   totalPages: number;
+  clientLogoUrl?: string;
 }) {
   const bullets = config.takeawaysBullets
     ? config.takeawaysBullets.split('\n')
@@ -632,20 +682,31 @@ function TakeawaysPageRender({
           padding: 40,
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'center',
         }}
       >
-        <p
-          style={{
-            fontSize: 15,
-            color: '#334155',
-            lineHeight: 1.7,
-            whiteSpace: 'pre-line',
-            margin: 0,
-          }}
-        >
-          {config.takeaways || 'Add your takeaways in the editor panel.'}
-        </p>
+        {clientLogoUrl && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+            <img
+              src={clientLogoUrl}
+              alt=""
+              style={{ height: 32, objectFit: 'contain', maxWidth: 140 }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          </div>
+        )}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+          <p
+            style={{
+              fontSize: 15,
+              color: '#334155',
+              lineHeight: 1.7,
+              whiteSpace: 'pre-line',
+              margin: 0,
+            }}
+          >
+            {config.takeaways || 'Add your takeaways in the editor panel.'}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -819,16 +880,22 @@ export default function ReportBuilder({
     return client.reportConfig ?? buildDefaultConfig(client, activeTab);
   });
 
+  // Tab selection — report is built from a specific tab
+  const [selectedTabId, setSelectedTabId] = useState<string>(
+    () => client.reportConfig?.tabId ?? activeTab.id
+  );
+  const selectedTab = client.tabs.find((t) => t.id === selectedTabId) ?? activeTab;
+
   const accent = config.coverBgColor;
 
-  // The cover page is always first, takeaways always last
-  // selectedPageId: 'cover' | 'takeaways' | page.id
   const [selectedPageId, setSelectedPageId] = useState<string>('cover');
   const [generating, setGenerating] = useState(false);
   const [showAddChart, setShowAddChart] = useState(false);
   const [rightPanelMode, setRightPanelMode] = useState<'edit' | 'history'>('edit');
   const [coverUploading, setCoverUploading] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
   const coverFileRef = useRef<HTMLInputElement>(null);
+  const logoFileRef = useRef<HTMLInputElement>(null);
 
   const renderRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -867,7 +934,7 @@ export default function ReportBuilder({
   const chartsInPages = new Set(
     config.pages.filter((p) => p.type === 'chart').flatMap((p) => [p.chartId, p.chartId2].filter(Boolean))
   );
-  const availableCharts = activeTab.chartConfigs.filter(
+  const availableCharts = selectedTab.chartConfigs.filter(
     (w) => (w.type ?? 'bar') !== 'total' && !chartsInPages.has(w.id)
   );
 
@@ -957,6 +1024,27 @@ export default function ReportBuilder({
   };
 
   // -------------------------------------------------------------------------
+  // Client logo upload
+  // -------------------------------------------------------------------------
+
+  const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoUploading(true);
+    try {
+      const blob = await upload(
+        `client-logos/${client.id}-logo-${Date.now()}.${file.name.split('.').pop()}`,
+        file,
+        { access: 'public', handleUploadUrl: '/api/upload-token' }
+      );
+      updateConfig({ clientLogoUrl: blob.url });
+    } finally {
+      setLogoUploading(false);
+      if (logoFileRef.current) logoFileRef.current.value = '';
+    }
+  };
+
+  // -------------------------------------------------------------------------
   // Download
   // -------------------------------------------------------------------------
 
@@ -966,7 +1054,8 @@ export default function ReportBuilder({
       const pageEls = Array.from(
         renderRef.current!.querySelectorAll('[data-report-page]')
       ) as HTMLElement[];
-      const filename = `${client.name.toLowerCase().replace(/\s+/g, '-')}-report.pdf`;
+      const rawName = config.reportName || `${client.name} Report`;
+      const filename = rawName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.pdf';
       await generatePdf(pageEls, filename);
       onAddHistory({
         id: Date.now().toString(),
@@ -998,6 +1087,7 @@ export default function ReportBuilder({
           accent={accent}
           pageNum={effectiveTotalPages}
           totalPages={effectiveTotalPages}
+          clientLogoUrl={config.clientLogoUrl}
         />
       );
     }
@@ -1009,11 +1099,12 @@ export default function ReportBuilder({
       return (
         <SummaryPageRender
           config={config}
-          activeTab={activeTab}
+          activeTab={selectedTab}
           parsedData={parsedData}
           accent={accent}
           pageNum={pageNum}
           totalPages={effectiveTotalPages}
+          clientLogoUrl={config.clientLogoUrl}
         />
       );
     }
@@ -1026,12 +1117,13 @@ export default function ReportBuilder({
           pageNum={pageNum}
           totalPages={effectiveTotalPages}
           clientName={config.coverSubtitle}
+          clientLogoUrl={config.clientLogoUrl}
         />
       );
     }
 
     if (page.type === 'chart' && page.chartId) {
-      const chartConfig = activeTab.chartConfigs.find((w) => w.id === page.chartId);
+      const chartConfig = selectedTab.chartConfigs.find((w) => w.id === page.chartId);
       if (!chartConfig) {
         return (
           <div
@@ -1051,10 +1143,10 @@ export default function ReportBuilder({
         );
       }
       const chartConfig2 = page.chartId2
-        ? activeTab.chartConfigs.find((w) => w.id === page.chartId2)
+        ? selectedTab.chartConfigs.find((w) => w.id === page.chartId2)
         : undefined;
       const pageTitle = page.title || chartConfig.title;
-      const chartAccent = accentForWidget(chartConfig, activeTab.chartConfigs);
+      const chartAccent = accentForWidget(chartConfig, selectedTab.chartConfigs);
       return (
         <ChartPageRender
           config={config}
@@ -1067,6 +1159,7 @@ export default function ReportBuilder({
           spendData={spendData}
           pageNum={pageNum}
           totalPages={effectiveTotalPages}
+          clientLogoUrl={config.clientLogoUrl}
         />
       );
     }
@@ -1083,8 +1176,33 @@ export default function ReportBuilder({
       return (
         <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <h2 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Cover Page
+            Report Settings
           </h2>
+
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Report Name / File Name</span>
+            <input
+              type="text"
+              value={config.reportName ?? ''}
+              onChange={(e) => updateConfig({ reportName: e.target.value })}
+              placeholder={`${client.name} Report`}
+              style={{
+                padding: '6px 10px',
+                border: '1px solid #e2e8f0',
+                borderRadius: 6,
+                fontSize: 13,
+                color: '#1e293b',
+                outline: 'none',
+              }}
+            />
+            <span style={{ fontSize: 10, color: '#94a3b8' }}>Used as the PDF file name when downloading</span>
+          </label>
+
+          <div style={{ height: 1, backgroundColor: '#f1f5f9' }} />
+
+          <h3 style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Cover Page
+          </h3>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Title</span>
@@ -1237,6 +1355,78 @@ export default function ReportBuilder({
               )}
             </button>
           </div>
+
+          <div style={{ height: 1, backgroundColor: '#f1f5f9' }} />
+
+          {/* Client logo upload */}
+          <div>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>
+              Client Logo
+            </span>
+            <span style={{ fontSize: 10, color: '#94a3b8', display: 'block', marginBottom: 8 }}>
+              Shown top-right on every non-cover page
+            </span>
+            {config.clientLogoUrl && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <img
+                  src={config.clientLogoUrl}
+                  alt="Client logo"
+                  style={{ height: 36, borderRadius: 4, border: '1px solid #e2e8f0', objectFit: 'contain', backgroundColor: '#f8fafc', padding: 4 }}
+                />
+                <button
+                  onClick={() => updateConfig({ clientLogoUrl: undefined })}
+                  style={{
+                    padding: '4px 8px',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 4,
+                    backgroundColor: '#ffffff',
+                    cursor: 'pointer',
+                    fontSize: 11,
+                    color: '#ef4444',
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+            <input
+              ref={logoFileRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={handleLogoFileChange}
+            />
+            <button
+              onClick={() => logoFileRef.current?.click()}
+              disabled={logoUploading}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                border: '1px dashed #cbd5e1',
+                borderRadius: 6,
+                backgroundColor: 'transparent',
+                cursor: logoUploading ? 'not-allowed' : 'pointer',
+                color: '#64748b',
+                fontSize: 12,
+              }}
+            >
+              {logoUploading ? (
+                <>
+                  <div style={{ width: 12, height: 12, border: '2px solid #e2e8f0', borderTopColor: '#1e3a6e', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                  Uploading…
+                </>
+              ) : (
+                <>
+                  <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Upload Client Logo
+                </>
+              )}
+            </button>
+          </div>
         </div>
       );
     }
@@ -1348,7 +1538,7 @@ export default function ReportBuilder({
     }
 
     if (page.type === 'chart' && page.chartId) {
-      const chartConfig = activeTab.chartConfigs.find((w) => w.id === page.chartId);
+      const chartConfig = selectedTab.chartConfigs.find((w) => w.id === page.chartId);
       const currentLayout = page.layout ?? '1-chart';
       // All charts not in other pages (but allow swapping within this page)
       const usedChartIds = new Set(
@@ -1356,7 +1546,7 @@ export default function ReportBuilder({
           .filter((p) => p.id !== page.id && p.type === 'chart')
           .flatMap((p) => [p.chartId, p.chartId2].filter(Boolean))
       );
-      const allNonTotalCharts = activeTab.chartConfigs.filter(
+      const allNonTotalCharts = selectedTab.chartConfigs.filter(
         (w) => (w.type ?? 'bar') !== 'total'
       );
       const availableForSecond = allNonTotalCharts.filter(
@@ -1638,6 +1828,38 @@ export default function ReportBuilder({
           <span style={{ color: '#ffffff', fontSize: 14, fontWeight: 600 }}>
             Report Builder — {client.name}
           </span>
+          {client.tabs.length > 1 && (
+            <>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>|</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tab:</span>
+                <select
+                  value={selectedTabId}
+                  onChange={(e) => {
+                    const newTabId = e.target.value;
+                    setSelectedTabId(newTabId);
+                    updateConfig({ tabId: newTabId });
+                  }}
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.12)',
+                    border: '1px solid rgba(255,255,255,0.25)',
+                    borderRadius: 6,
+                    color: '#ffffff',
+                    fontSize: 13,
+                    padding: '3px 8px',
+                    cursor: 'pointer',
+                    outline: 'none',
+                  }}
+                >
+                  {client.tabs.map((t) => (
+                    <option key={t.id} value={t.id} style={{ backgroundColor: '#1e3a6e', color: '#ffffff' }}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1823,7 +2045,7 @@ export default function ReportBuilder({
                 const label = page.type === 'notes'
                   ? (page.title || 'Notes')
                   : (() => {
-                      const chart = activeTab.chartConfigs.find((w) => w.id === page.chartId);
+                      const chart = selectedTab.chartConfigs.find((w) => w.id === page.chartId);
                       return page.title || chart?.title || 'Chart';
                     })();
 
@@ -2104,11 +2326,12 @@ export default function ReportBuilder({
               <div key={page.id} data-report-page="">
                 <SummaryPageRender
                   config={config}
-                  activeTab={activeTab}
+                  activeTab={selectedTab}
                   parsedData={parsedData}
                   accent={accent}
                   pageNum={pageNum}
                   totalPages={totalPages}
+                  clientLogoUrl={config.clientLogoUrl}
                 />
               </div>
             );
@@ -2122,18 +2345,19 @@ export default function ReportBuilder({
                   pageNum={pageNum}
                   totalPages={totalPages}
                   clientName={config.coverSubtitle}
+                  clientLogoUrl={config.clientLogoUrl}
                 />
               </div>
             );
           }
           if (page.type === 'chart' && page.chartId) {
-            const chartConfig = activeTab.chartConfigs.find((w) => w.id === page.chartId);
+            const chartConfig = selectedTab.chartConfigs.find((w) => w.id === page.chartId);
             if (!chartConfig) return null;
             const chartConfig2 = page.chartId2
-              ? activeTab.chartConfigs.find((w) => w.id === page.chartId2)
+              ? selectedTab.chartConfigs.find((w) => w.id === page.chartId2)
               : undefined;
             const pageTitle = page.title || chartConfig.title;
-            const chartAccent = accentForWidget(chartConfig, activeTab.chartConfigs);
+            const chartAccent = accentForWidget(chartConfig, selectedTab.chartConfigs);
             return (
               <div key={page.id} data-report-page="">
                 <ChartPageRender
@@ -2147,6 +2371,7 @@ export default function ReportBuilder({
                   spendData={spendData}
                   pageNum={pageNum}
                   totalPages={totalPages}
+                  clientLogoUrl={config.clientLogoUrl}
                 />
               </div>
             );
@@ -2161,6 +2386,7 @@ export default function ReportBuilder({
             accent={accent}
             pageNum={totalPages}
             totalPages={totalPages}
+            clientLogoUrl={config.clientLogoUrl}
           />
         </div>
       </div>

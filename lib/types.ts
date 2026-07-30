@@ -120,14 +120,17 @@ export interface ReportPage {
 }
 
 export interface ReportConfig {
+  reportName: string;         // used as PDF filename and display label
+  tabId?: string;             // which tab this report is built from
   coverTitle: string;
   coverSubtitle: string;
   coverDateRange: string;
   coverBgColor: string;
   coverImageUrl?: string;
+  clientLogoUrl?: string;     // shown top-right on every non-cover page
   pages: ReportPage[];
   takeaways: string;
-  takeawaysBullets: string;  // newline-separated bullet points for left column
+  takeawaysBullets: string;
 }
 
 export interface ReportHistoryEntry {
