@@ -50,7 +50,7 @@ export interface CriteriaFilter {
   logic: FilterLogicOp[]; // length = conditions.length - 1; logic[i] connects condition[i] and condition[i+1]
 }
 
-export type WidgetType = 'total' | 'bar' | 'pie' | 'line' | 'column' | 'stacked_bar' | 'table' | 'funnel' | 'cost' | 'cost_bar';
+export type WidgetType = 'total' | 'bar' | 'pie' | 'line' | 'column' | 'stacked_bar' | 'table' | 'funnel' | 'cost' | 'cost_bar' | 'comparison_bar';
 
 export interface CostMetricDef {
   tagLabel: string;

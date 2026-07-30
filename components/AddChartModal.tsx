@@ -23,6 +23,7 @@ const TYPE_META: { type: WidgetType; label: string; description: string; icon: R
   { type: 'funnel', label: 'Candidate Funnel', description: 'Stage-by-stage conversion', icon: <FunnelIcon /> },
   { type: 'cost', label: 'Cost Table', description: 'Spend + cost/app by source', icon: <CostIcon /> },
   { type: 'cost_bar', label: 'Cost Bar Chart', description: '$/candidate or $/app by week', icon: <CostBarIcon /> },
+  { type: 'comparison_bar', label: 'Comparison Bars', description: 'Applied vs Not Applied by tag', icon: <ComparisonBarIcon /> },
 ];
 
 const TYPE_STEP_LABEL: Record<WidgetType, string> = {
@@ -36,10 +37,11 @@ const TYPE_STEP_LABEL: Record<WidgetType, string> = {
   funnel: 'Add Candidate Funnel',
   cost: 'Add Cost Table',
   cost_bar: 'Add Cost Bar Chart',
+  comparison_bar: 'Add Comparison Bars',
 };
 
 // tag-group-based types (no metric, uses tagGroupAxis)
-const TAG_GROUP_TYPES: WidgetType[] = ['pie', 'column', 'table', 'stacked_bar'];
+const TAG_GROUP_TYPES: WidgetType[] = ['pie', 'column', 'table', 'stacked_bar', 'comparison_bar'];
 // time-series types (uses metric + groupBy)
 const TIME_SERIES_TYPES: WidgetType[] = ['bar', 'line'];
 
@@ -56,6 +58,7 @@ function autoTitle(type: WidgetType, metric: string | null, data: ParsedData, ta
   if (type === 'funnel') return 'Candidate Funnel';
   if (type === 'cost') return 'Cost by Source';
   if (type === 'cost_bar') return 'Cost per Week';
+  if (type === 'comparison_bar') return tagGroupAxis ? `${tagGroupAxis} — Applied vs Not Applied` : 'Comparison Bars';
   // bar
   if (tagGroupAxis) return tagName ? `${tagName} by ${tagGroupAxis}` : `Candidates by ${tagGroupAxis}`;
   return tagName ? `${tagName} over time` : 'New Chart';
@@ -385,4 +388,11 @@ function CostIcon() {
 }
 function CostBarIcon() {
   return <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h18" /></svg>;
+}
+function ComparisonBarIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8h11M3 12h7M3 16h13" />
+    </svg>
+  );
 }

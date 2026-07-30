@@ -15,6 +15,7 @@ import FunnelWidget from '@/components/FunnelWidget';
 import SpendManager from '@/components/SpendManager';
 import CostTableWidget from '@/components/CostTableWidget';
 import CostBarWidget from '@/components/CostBarWidget';
+import ComparisonBarWidget from '@/components/ComparisonBarWidget';
 import { useClients } from '@/lib/useClients';
 import { clientNameFromFilename } from '@/lib/csvParser';
 import type { ChartConfig } from '@/lib/types';
@@ -317,8 +318,9 @@ export default function Home() {
                       case 'table':       widget = <TableWidget {...commonProps} />; break;
                       case 'funnel':      widget = <FunnelWidget {...commonProps} />; break;
                       case 'cost':        widget = <CostTableWidget {...commonProps} spendData={activeClient?.spendData ?? []} />; break;
-                      case 'cost_bar':    widget = <CostBarWidget {...commonProps} spendData={activeClient?.spendData ?? []} />; break;
-                      default:            widget = <ChartPanel {...commonProps} />;
+                      case 'cost_bar':        widget = <CostBarWidget {...commonProps} spendData={activeClient?.spendData ?? []} />; break;
+                      case 'comparison_bar': widget = <ComparisonBarWidget {...commonProps} />; break;
+                      default:               widget = <ChartPanel {...commonProps} />;
                     }
                     const span = w.colSpan ?? 4;
                     const spanClass = span === 1 ? 'col-span-1' : span === 2 ? 'col-span-2' : span === 3 ? 'col-span-3' : 'col-span-4';
