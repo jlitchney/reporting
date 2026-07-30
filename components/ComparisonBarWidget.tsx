@@ -68,7 +68,7 @@ function TagSection({
                 dataKey="value"
                 position="right"
                 style={{ fontSize: 11, fill: '#374151', fontWeight: 500 }}
-                formatter={(v: unknown) => fmtK(Number(v))}
+                formatter={(v: unknown) => Number(v).toLocaleString()}
               />
             </Bar>
           </BarChart>
