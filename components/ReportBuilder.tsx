@@ -1540,17 +1540,12 @@ export default function ReportBuilder({
     if (page.type === 'chart' && page.chartId) {
       const chartConfig = selectedTab.chartConfigs.find((w) => w.id === page.chartId);
       const currentLayout = page.layout ?? '1-chart';
-      // All charts not in other pages (but allow swapping within this page)
-      const usedChartIds = new Set(
-        config.pages
-          .filter((p) => p.id !== page.id && p.type === 'chart')
-          .flatMap((p) => [p.chartId, p.chartId2].filter(Boolean))
-      );
       const allNonTotalCharts = selectedTab.chartConfigs.filter(
         (w) => (w.type ?? 'bar') !== 'total'
       );
+      // Any chart is valid as the second — exclude only the first chart on this page
       const availableForSecond = allNonTotalCharts.filter(
-        (w) => !usedChartIds.has(w.id) && w.id !== page.chartId
+        (w) => w.id !== page.chartId
       );
 
       return (
