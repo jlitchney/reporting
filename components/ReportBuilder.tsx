@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ChartConfig, ClientTab, ParsedData } from '@/lib/types';
+import type { ChartConfig, ClientTab, ParsedData, TextBlockPosition, ReportTextBlock } from '@/lib/types';
 import type { ReportConfig, ReportPage, ReportHistoryEntry } from '@/lib/types';
 import type { StoredClient, SpendEntry } from '@/lib/useClients';
 import { generatePdf } from '@/lib/generatePdf';
@@ -456,7 +456,27 @@ function ChartPageRender({
   }
 
   // 1-chart layout
-  const enlarged: ChartConfig = { ...chartConfig, chartHeight: 560, colSpan: 4 };
+  const textBlock = page.textBlock;
+  const hasHalfText = textBlock && (textBlock.position === 'left-half' || textBlock.position === 'right-half');
+  const chartHeight = hasHalfText ? 520 : 560;
+  const enlarged: ChartConfig = { ...chartConfig, chartHeight, colSpan: 4 };
+
+  const textPanelStyle: React.CSSProperties = {
+    width: 480,
+    flexShrink: 0,
+    padding: '20px 24px',
+    overflow: 'hidden',
+    fontSize: 13,
+    lineHeight: 1.65,
+    color: '#1e293b',
+  };
+
+  const cornerPositions: Record<string, React.CSSProperties> = {
+    'top-left':     { top: 12, left: 12 },
+    'top-right':    { top: 12, right: 12 },
+    'bottom-left':  { bottom: 12, left: 12 },
+    'bottom-right': { bottom: 12, right: 12 },
+  };
 
   return (
     <div
@@ -477,6 +497,7 @@ function ChartPageRender({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexShrink: 0,
         }}
       >
         <h1
@@ -500,15 +521,47 @@ function ChartPageRender({
           />
         )}
       </div>
-      <div
-        style={{
-          flex: 1,
-          padding: '16px 24px',
-          overflow: 'hidden',
-        }}
-      >
-        {renderWidget(enlarged, parsedData, accent, spendData)}
-      </div>
+
+      {/* Content area */}
+      {hasHalfText ? (
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+          {textBlock.position === 'left-half' && (
+            <div style={{ ...textPanelStyle, borderRight: '1px solid #f1f5f9' }}
+              dangerouslySetInnerHTML={{ __html: textBlock.content }} />
+          )}
+          <div style={{ flex: 1, overflow: 'hidden', padding: '12px 16px' }}>
+            {renderWidget(enlarged, parsedData, accent, spendData)}
+          </div>
+          {textBlock.position === 'right-half' && (
+            <div style={{ ...textPanelStyle, borderLeft: '1px solid #f1f5f9' }}
+              dangerouslySetInnerHTML={{ __html: textBlock.content }} />
+          )}
+        </div>
+      ) : (
+        <div style={{ flex: 1, padding: '16px 24px', overflow: 'hidden', position: 'relative' }}>
+          {renderWidget(enlarged, parsedData, accent, spendData)}
+          {textBlock && textBlock.content && cornerPositions[textBlock.position] && (
+            <div
+              style={{
+                position: 'absolute',
+                ...cornerPositions[textBlock.position],
+                width: 260,
+                maxHeight: 200,
+                backgroundColor: 'rgba(255,255,255,0.96)',
+                borderRadius: 6,
+                padding: '12px 14px',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+                fontSize: 12,
+                lineHeight: 1.55,
+                color: '#1e293b',
+                overflow: 'hidden',
+              }}
+              dangerouslySetInnerHTML={{ __html: textBlock.content }}
+            />
+          )}
+        </div>
+      )}
+
       <PageFooter
         clientName={config.coverSubtitle}
         pageNum={pageNum}
@@ -587,10 +640,94 @@ function TakeawaysPageRender({
   totalPages: number;
   clientLogoUrl?: string;
 }) {
-  const bullets = config.takeawaysBullets
-    ? config.takeawaysBullets.split('\n')
-    : [];
+  const bullets = config.takeawaysBullets ? config.takeawaysBullets.split('\n') : [];
+  const hasImage = !!config.takeawaysImageUrl;
 
+  // ---- Image layout (matches reference: photo left, text right) ----
+  if (hasImage) {
+    return (
+      <div
+        style={{
+          width: 1056,
+          height: 816,
+          display: 'flex',
+          backgroundColor: '#ffffff',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Left: photo */}
+        <div
+          style={{
+            width: 400,
+            flexShrink: 0,
+            backgroundImage: `url(${config.takeawaysImageUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        />
+        {/* Right: content */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 48px 32px' }}>
+          {/* Header row */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
+            <h1
+              style={{
+                fontSize: 52,
+                fontWeight: 900,
+                color: '#0f172a',
+                textTransform: 'uppercase',
+                letterSpacing: '-0.01em',
+                lineHeight: 1,
+                margin: 0,
+              }}
+            >
+              Takeaways
+            </h1>
+            {clientLogoUrl && (
+              <img
+                src={clientLogoUrl}
+                alt=""
+                style={{ height: 48, objectFit: 'contain', maxWidth: 160, marginTop: 4 }}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            )}
+          </div>
+          <div style={{ height: 3, backgroundColor: '#0f172a', marginBottom: 28 }} />
+
+          {/* Narrative */}
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            {config.takeaways ? (
+              <p
+                style={{
+                  fontSize: 14,
+                  color: '#334155',
+                  lineHeight: 1.75,
+                  whiteSpace: 'pre-line',
+                  margin: 0,
+                }}
+              >
+                {config.takeaways}
+              </p>
+            ) : (
+              <p style={{ color: '#94a3b8', fontSize: 14 }}>Add your takeaways in the editor panel.</p>
+            )}
+          </div>
+
+          {/* Bottom: AST logo */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+            <img
+              src="/logo-black.png"
+              alt=""
+              style={{ height: 22 }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ---- Original colored-panel layout (no image) ----
   return (
     <div
       style={{
@@ -631,14 +768,7 @@ function TakeawaysPageRender({
           {bullets.map(
             (b, i) =>
               b.trim() && (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    gap: 8,
-                    marginBottom: 12,
-                  }}
-                >
+                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                   <div
                     style={{
                       marginTop: 6,
@@ -649,14 +779,7 @@ function TakeawaysPageRender({
                       backgroundColor: 'rgba(255,255,255,0.6)',
                     }}
                   />
-                  <p
-                    style={{
-                      fontSize: 13,
-                      color: 'rgba(255,255,255,0.9)',
-                      lineHeight: 1.4,
-                      margin: 0,
-                    }}
-                  >
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', lineHeight: 1.4, margin: 0 }}>
                     {b.trim()}
                   </p>
                 </div>
@@ -668,21 +791,12 @@ function TakeawaysPageRender({
             src="/logo-white.png"
             alt=""
             style={{ height: 24 }}
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         </div>
       </div>
       {/* Right column */}
-      <div
-        style={{
-          flex: 1,
-          padding: 40,
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
+      <div style={{ flex: 1, padding: 40, display: 'flex', flexDirection: 'column' }}>
         {clientLogoUrl && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
             <img
@@ -694,15 +808,7 @@ function TakeawaysPageRender({
           </div>
         )}
         <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-          <p
-            style={{
-              fontSize: 15,
-              color: '#334155',
-              lineHeight: 1.7,
-              whiteSpace: 'pre-line',
-              margin: 0,
-            }}
-          >
+          <p style={{ fontSize: 15, color: '#334155', lineHeight: 1.7, whiteSpace: 'pre-line', margin: 0 }}>
             {config.takeaways || 'Add your takeaways in the editor panel.'}
           </p>
         </div>
@@ -893,8 +999,11 @@ export default function ReportBuilder({
   const [rightPanelMode, setRightPanelMode] = useState<'edit' | 'history'>('edit');
   const [coverUploading, setCoverUploading] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
+  const [takeawaysUploading, setTakeawaysUploading] = useState(false);
   const coverFileRef = useRef<HTMLInputElement>(null);
   const logoFileRef = useRef<HTMLInputElement>(null);
+  const takeawaysFileRef = useRef<HTMLInputElement>(null);
+  const textBlockEditorRef = useRef<HTMLDivElement>(null);
 
   const renderRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -988,6 +1097,16 @@ export default function ReportBuilder({
     });
   };
 
+  const updateTextBlock = (pageId: string, patch: Partial<ReportTextBlock> | null) => {
+    updateConfig({
+      pages: config.pages.map((p) => {
+        if (p.id !== pageId) return p;
+        if (patch === null) return { ...p, textBlock: undefined };
+        return { ...p, textBlock: { ...p.textBlock, content: p.textBlock?.content ?? '', position: p.textBlock?.position ?? 'right-half', ...patch } };
+      }),
+    });
+  };
+
   const toggleSummaryPage = () => {
     const hasSummary = config.pages.some((p) => p.type === 'summary');
     if (hasSummary) {
@@ -1050,6 +1169,32 @@ export default function ReportBuilder({
     } finally {
       setLogoUploading(false);
       if (logoFileRef.current) logoFileRef.current.value = '';
+    }
+  };
+
+  // -------------------------------------------------------------------------
+  // Takeaways image upload
+  // -------------------------------------------------------------------------
+
+  const handleTakeawaysImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setTakeawaysUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/upload-image', { method: 'POST', body: form });
+      if (!res.ok) {
+        const { error } = await res.json();
+        throw new Error(error ?? 'Upload failed');
+      }
+      const { url } = await res.json();
+      updateConfig({ takeawaysImageUrl: url });
+    } catch (err) {
+      alert(`Image upload failed: ${(err as Error).message}`);
+    } finally {
+      setTakeawaysUploading(false);
+      if (takeawaysFileRef.current) takeawaysFileRef.current.value = '';
     }
   };
 
@@ -1447,9 +1592,10 @@ export default function ReportBuilder({
             Takeaways
           </h2>
 
+          {!config.takeawaysImageUrl && (
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Key Points (left column)
+              Key Points (left column — no image)
             </span>
             <span style={{ fontSize: 11, color: '#94a3b8' }}>One bullet per line</span>
             <textarea
@@ -1469,10 +1615,11 @@ export default function ReportBuilder({
               }}
             />
           </label>
+          )}
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Narrative (right column)
+              Narrative
             </span>
             <textarea
               value={config.takeaways}
@@ -1491,6 +1638,50 @@ export default function ReportBuilder({
               }}
             />
           </label>
+
+          <div style={{ height: 1, backgroundColor: '#f1f5f9' }} />
+
+          {/* Takeaways image */}
+          <div>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>
+              Background Image
+            </span>
+            <span style={{ fontSize: 10, color: '#94a3b8', display: 'block', marginBottom: 8 }}>
+              When set, shows as a full-height photo on the left side
+            </span>
+            {config.takeawaysImageUrl && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <img
+                  src={config.takeawaysImageUrl}
+                  alt="Takeaways"
+                  style={{ height: 56, width: 40, borderRadius: 4, border: '1px solid #e2e8f0', objectFit: 'cover' }}
+                />
+                <button
+                  onClick={() => updateConfig({ takeawaysImageUrl: undefined })}
+                  style={{ padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: 4, backgroundColor: '#ffffff', cursor: 'pointer', fontSize: 11, color: '#ef4444' }}
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+            <input ref={takeawaysFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleTakeawaysImageChange} />
+            <button
+              onClick={() => takeawaysFileRef.current?.click()}
+              disabled={takeawaysUploading}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 12px', border: '1px dashed #cbd5e1', borderRadius: 6,
+                backgroundColor: 'transparent', cursor: takeawaysUploading ? 'not-allowed' : 'pointer',
+                color: '#64748b', fontSize: 12,
+              }}
+            >
+              {takeawaysUploading ? (
+                <><div style={{ width: 12, height: 12, border: '2px solid #e2e8f0', borderTopColor: '#1e3a6e', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />Uploading…</>
+              ) : (
+                <><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>Upload Photo</>
+              )}
+            </button>
+          </div>
         </div>
       );
     }
@@ -1663,6 +1854,78 @@ export default function ReportBuilder({
               </select>
             </label>
           )}
+
+          {/* Narration / text block */}
+          <div style={{ height: 1, backgroundColor: '#f1f5f9' }} />
+          <div>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>
+              Narration Block
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 6 }}>Position</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, marginBottom: 10 }}>
+              {([
+                [null,          'None'],
+                ['left-half',   '← Left ½'],
+                ['right-half',  'Right ½ →'],
+                ['top-left',    '◤ Top-L'],
+                ['top-right',   'Top-R ◥'],
+                ['bottom-left', '◣ Bot-L'],
+                ['bottom-right','Bot-R ◢'],
+              ] as [TextBlockPosition | null, string][]).map(([pos, label]) => {
+                const isActive = pos === null ? !page.textBlock : page.textBlock?.position === pos;
+                return (
+                  <button
+                    key={label}
+                    onClick={() => {
+                      if (pos === null) {
+                        updateTextBlock(page.id, null);
+                      } else {
+                        updateTextBlock(page.id, { position: pos, content: page.textBlock?.content ?? '' });
+                      }
+                    }}
+                    style={{
+                      padding: '4px 6px',
+                      border: `1px solid ${isActive ? '#1e3a6e' : '#e2e8f0'}`,
+                      borderRadius: 4,
+                      backgroundColor: isActive ? '#1e3a6e' : '#ffffff',
+                      color: isActive ? '#ffffff' : '#64748b',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            {page.textBlock && (
+              <>
+                <NotesToolbar onColorPick={() => {}} />
+                <div
+                  ref={textBlockEditorRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  dangerouslySetInnerHTML={{ __html: page.textBlock.content }}
+                  onBlur={() => {
+                    const html = textBlockEditorRef.current?.innerHTML ?? '';
+                    updateTextBlock(page.id, { content: html });
+                  }}
+                  style={{
+                    minHeight: 120,
+                    padding: 12,
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 6,
+                    outline: 'none',
+                    fontSize: 13,
+                    lineHeight: 1.6,
+                    color: '#1e293b',
+                  }}
+                />
+              </>
+            )}
+          </div>
         </div>
       );
     }

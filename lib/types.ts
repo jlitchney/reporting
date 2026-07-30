@@ -109,6 +109,13 @@ export interface ClientTab {
   chartConfigs: ChartConfig[];
 }
 
+export type TextBlockPosition = 'left-half' | 'right-half' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+
+export interface ReportTextBlock {
+  content: string;         // HTML string
+  position: TextBlockPosition;
+}
+
 export interface ReportPage {
   id: string;
   type: 'chart' | 'summary' | 'notes';
@@ -117,6 +124,7 @@ export interface ReportPage {
   layout?: '1-chart' | '2-charts';  // defaults to '1-chart'
   title?: string;     // optional title override
   notesContent?: string;  // HTML string for notes type
+  textBlock?: ReportTextBlock;  // optional narration overlay
 }
 
 export interface ReportConfig {
@@ -131,6 +139,7 @@ export interface ReportConfig {
   pages: ReportPage[];
   takeaways: string;
   takeawaysBullets: string;
+  takeawaysImageUrl?: string; // image shown on left half of takeaways page
 }
 
 export interface ReportHistoryEntry {
