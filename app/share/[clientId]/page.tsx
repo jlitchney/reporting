@@ -12,6 +12,9 @@ import ColumnChartWidget from '@/components/ColumnChartWidget';
 import StackedBarWidget from '@/components/StackedBarWidget';
 import TableWidget from '@/components/TableWidget';
 import FunnelWidget from '@/components/FunnelWidget';
+import CostBarWidget from '@/components/CostBarWidget';
+import CostTableWidget from '@/components/CostTableWidget';
+import ComparisonBarWidget from '@/components/ComparisonBarWidget';
 import type { ParsedData, ChartConfig, ClientTab } from '@/lib/types';
 
 interface ClientData {
@@ -64,7 +67,8 @@ export default function SharePage() {
     [client, activeTabId]
   );
 
-  const widgets = activeTab?.chartConfigs ?? [];
+  const allWidgets = activeTab?.chartConfigs ?? [];
+  const widgets = allWidgets.filter((w) => w.showInReport !== false);
   const totalWidgets = widgets.filter((w) => (w.type ?? 'bar') === 'total');
   const nonTotalWidgets = widgets.filter((w) => (w.type ?? 'bar') !== 'total');
 
@@ -161,13 +165,16 @@ export default function SharePage() {
               };
               let widget: React.ReactNode;
               switch (w.type ?? 'bar') {
-                case 'line':        widget = <LineChartWidget {...commonProps} />; break;
-                case 'pie':         widget = <PieChartWidget {...commonProps} />; break;
-                case 'column':      widget = <ColumnChartWidget {...commonProps} />; break;
-                case 'stacked_bar': widget = <StackedBarWidget {...commonProps} />; break;
-                case 'table':       widget = <TableWidget {...commonProps} />; break;
-                case 'funnel':      widget = <FunnelWidget {...commonProps} />; break;
-                default:            widget = <ChartPanel {...commonProps} />;
+                case 'line':            widget = <LineChartWidget {...commonProps} />; break;
+                case 'pie':             widget = <PieChartWidget {...commonProps} />; break;
+                case 'column':          widget = <ColumnChartWidget {...commonProps} />; break;
+                case 'stacked_bar':     widget = <StackedBarWidget {...commonProps} />; break;
+                case 'table':           widget = <TableWidget {...commonProps} />; break;
+                case 'funnel':          widget = <FunnelWidget {...commonProps} />; break;
+                case 'cost_bar':        widget = <CostBarWidget {...commonProps} />; break;
+                case 'cost':            widget = <CostTableWidget {...commonProps} />; break;
+                case 'comparison_bar':  widget = <ComparisonBarWidget {...commonProps} />; break;
+                default:                widget = <ChartPanel {...commonProps} />;
               }
               const span = w.colSpan ?? 4;
               const spanClass = span === 1 ? 'col-span-1' : span === 2 ? 'col-span-2' : span === 3 ? 'col-span-3' : 'col-span-4';

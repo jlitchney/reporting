@@ -20,9 +20,11 @@ interface AppearanceControlsProps {
   onColorChange: (color: string) => void;
   onColSpanChange?: (span: 1 | 2 | 3 | 4) => void;
   onHeightChange?: (h: number) => void;
+  showInReport?: boolean;
+  onShowInReportChange?: (v: boolean) => void;
 }
 
-export default function AppearanceControls({ color, colSpan, chartHeight, onColorChange, onColSpanChange, onHeightChange }: AppearanceControlsProps) {
+export default function AppearanceControls({ color, colSpan, chartHeight, onColorChange, onColSpanChange, onHeightChange, showInReport, onShowInReportChange }: AppearanceControlsProps) {
   return (
     <div className="flex flex-wrap items-end gap-4">
       <div className="flex flex-col gap-1.5">
@@ -93,6 +95,25 @@ export default function AppearanceControls({ color, colSpan, chartHeight, onColo
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {onShowInReportChange && (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Viewers</label>
+          <label className="flex cursor-pointer items-center gap-2">
+            <div className="relative flex-shrink-0">
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={showInReport ?? true}
+                onChange={(e) => onShowInReportChange(e.target.checked)}
+              />
+              <div className={`h-4 w-7 rounded-full transition-colors ${(showInReport ?? true) ? 'bg-[#1e3a6e]' : 'bg-slate-300'}`} />
+              <div className={`absolute left-0.5 top-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform ${(showInReport ?? true) ? 'translate-x-3' : ''}`} />
+            </div>
+            <span className="text-xs text-slate-600">Show in shared report</span>
+          </label>
         </div>
       )}
     </div>

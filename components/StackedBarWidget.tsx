@@ -187,6 +187,8 @@ export default function StackedBarWidget({ data, config, accent, onUpdate, onRem
       onColorChange={(c) => onUpdate(id, { color: c })}
       onColSpanChange={(s) => onUpdate(id, { colSpan: s })}
       onHeightChange={(h) => onUpdate(id, { chartHeight: h })}
+      showInReport={config.showInReport}
+      onShowInReportChange={(v) => onUpdate(id, { showInReport: v })}
       configPanel={configPanel}
     >
       <div className="px-4 pb-4 pt-2">

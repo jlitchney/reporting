@@ -207,6 +207,8 @@ export default function TotalWidget({ data, config, accent, onUpdate, onRemove, 
               <AppearanceControls
                 color={accent}
                 onColorChange={(c) => onUpdate(id, { color: c })}
+                showInReport={config.showInReport}
+                onShowInReportChange={(v) => onUpdate(id, { showInReport: v })}
               />
             </div>
           </div>

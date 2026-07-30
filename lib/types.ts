@@ -100,6 +100,7 @@ export interface ChartConfig {
   colSpan?: 1 | 2 | 3 | 4;
   chartHeight?: number;
   seriesColors?: Record<string, string>;
+  showInReport?: boolean; // undefined/true = shown on share page; false = hidden
 }
 
 export interface ClientTab {

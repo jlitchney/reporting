@@ -278,6 +278,8 @@ export default function CostTableWidget({
       configPanel={configPanel}
       colSpan={config.colSpan}
       onColSpanChange={(span) => onUpdate(config.id, { colSpan: span })}
+      showInReport={config.showInReport}
+      onShowInReportChange={(v) => onUpdate(config.id, { showInReport: v })}
     >
       {rows.length === 0 ? (
         <div className="flex items-center justify-center py-10 text-xs text-slate-400">

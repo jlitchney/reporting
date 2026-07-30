@@ -379,6 +379,8 @@ export default function ChartPanel({
               onColorChange={(c) => onUpdate(id, { color: c })}
               onColSpanChange={(s) => onUpdate(id, { colSpan: s })}
               onHeightChange={(h) => onUpdate(id, { chartHeight: h })}
+              showInReport={config.showInReport}
+              onShowInReportChange={(v) => onUpdate(id, { showInReport: v })}
             />
           </div>
         </div>

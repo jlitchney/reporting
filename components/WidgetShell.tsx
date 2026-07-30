@@ -20,6 +20,8 @@ interface WidgetShellProps {
   onColorChange?: (color: string) => void;
   onColSpanChange?: (span: 1 | 2 | 3 | 4) => void;
   onHeightChange?: (h: number) => void;
+  showInReport?: boolean;
+  onShowInReportChange?: (v: boolean) => void;
 }
 
 export default function WidgetShell({
@@ -39,6 +41,8 @@ export default function WidgetShell({
   onColorChange,
   onColSpanChange,
   onHeightChange,
+  showInReport,
+  onShowInReportChange,
 }: WidgetShellProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
@@ -46,7 +50,7 @@ export default function WidgetShell({
   const widgetRef = useRef<HTMLDivElement>(null);
 
   const commitTitle = () => { onTitleSave(titleDraft); setEditingTitle(false); };
-  const hasConfig = configPanel !== undefined || onColorChange !== undefined;
+  const hasConfig = configPanel !== undefined || onColorChange !== undefined || onShowInReportChange !== undefined;
 
   const handleHeightDragStart = useCallback((e: React.MouseEvent) => {
     if (!onHeightChange) return;
@@ -122,6 +126,11 @@ export default function WidgetShell({
           {badge != null && (
             <span className="mr-1 text-xs font-semibold text-slate-700">{badge}</span>
           )}
+          {showInReport === false && !readOnly && (
+            <span title="Hidden from shared report" className="text-slate-400">
+              <EyeOffIcon />
+            </span>
+          )}
           {onDuplicate && !readOnly && (
             <button
               onClick={onDuplicate}
@@ -161,7 +170,7 @@ export default function WidgetShell({
       {configOpen && hasConfig && (
         <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
           {configPanel && <div>{configPanel}</div>}
-          {onColorChange && (
+          {onColorChange ? (
             <div className={configPanel ? 'mt-3 pt-3 border-t border-slate-100' : undefined}>
               <AppearanceControls
                 color={accent}
@@ -170,9 +179,27 @@ export default function WidgetShell({
                 onColorChange={onColorChange}
                 onColSpanChange={onColSpanChange}
                 onHeightChange={onHeightChange}
+                showInReport={showInReport}
+                onShowInReportChange={onShowInReportChange}
               />
             </div>
-          )}
+          ) : onShowInReportChange ? (
+            <div className={configPanel ? 'mt-3 pt-3 border-t border-slate-100' : undefined}>
+              <label className="flex cursor-pointer items-center gap-2">
+                <div className="relative flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={showInReport ?? true}
+                    onChange={(e) => onShowInReportChange(e.target.checked)}
+                  />
+                  <div className={`h-4 w-7 rounded-full transition-colors ${(showInReport ?? true) ? 'bg-[#1e3a6e]' : 'bg-slate-300'}`} />
+                  <div className={`absolute left-0.5 top-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform ${(showInReport ?? true) ? 'translate-x-3' : ''}`} />
+                </div>
+                <span className="text-xs text-slate-600">Show in shared report</span>
+              </label>
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -210,6 +237,14 @@ function GripIcon() {
       <circle cx="5" cy="4" r="1.5" /><circle cx="11" cy="4" r="1.5" />
       <circle cx="5" cy="8" r="1.5" /><circle cx="11" cy="8" r="1.5" />
       <circle cx="5" cy="12" r="1.5" /><circle cx="11" cy="12" r="1.5" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
     </svg>
   );
 }
