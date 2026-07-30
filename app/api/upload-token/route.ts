@@ -11,7 +11,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         allowedContentTypes: ['text/csv', 'text/plain', 'application/octet-stream', 'image/jpeg', 'image/png', 'image/webp', 'image/gif'],
         maximumSizeInBytes: 100 * 1024 * 1024,
       }),
-      onUploadCompleted: async () => {},
     });
     return NextResponse.json(response);
   } catch (error) {
