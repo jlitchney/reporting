@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LabelList, Cell } from 'recharts';
 import { isBefore, isAfter, startOfYear, startOfMonth, subDays } from 'date-fns';
 import WidgetShell from './WidgetShell';
 import { DATE_PRESET_LABELS } from '@/lib/dataProcessor';
@@ -9,14 +8,6 @@ import type { ParsedData, ChartConfig, ChartQuery, DatePreset, ComparisonSeries 
 
 const DATE_PRESETS: DatePreset[] = ['all_time', 'this_year', 'this_month', 'last_30_days', 'last_90_days'];
 const FALLBACK_COLORS = ['#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#3b82f6'];
-
-function fmtK(n: number): string {
-  if (n >= 1000) {
-    const v = n / 1000;
-    return `${v % 1 === 0 ? v : v.toFixed(1)}K`;
-  }
-  return String(n);
-}
 
 function presetStart(preset: DatePreset): Date | null {
   const now = new Date();
@@ -40,52 +31,36 @@ function TagSection({
   tagName: string;
   bars: { label: string; value: number; color: string }[];
 }) {
-  const chartData = bars.map((b) => ({ name: b.label, value: b.value, color: b.color }));
-  // x-axis ticks take ~24px at the bottom; offset the position label to center over bars only
-  const xAxisHeight = 24;
-  const height = Math.max(64, bars.length * 32 + xAxisHeight + 8);
+  const maxValue = Math.max(...bars.map((b) => b.value), 1);
 
   return (
-    <div className="flex items-stretch border-b border-slate-100 pb-1 last:border-0">
-      {/* Position name: centered over the bar rows, not the x-axis */}
-      <div
-        className="flex w-28 flex-shrink-0 flex-col justify-center pr-3 text-right text-xs font-medium text-slate-600"
-        style={{ paddingBottom: xAxisHeight }}
-      >
+    <div className="flex items-center gap-2 border-b border-slate-100 py-2.5 last:border-0">
+      {/* Position name — naturally centered between all bar rows by items-center */}
+      <div className="w-28 flex-shrink-0 pr-2 text-right text-xs font-semibold text-slate-600">
         {tagName}
       </div>
-      <div className="flex-1">
-        <ResponsiveContainer width="100%" height={height}>
-          <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 60, left: 0, bottom: xAxisHeight }}>
-            <XAxis
-              type="number"
-              domain={[0, 'auto']}
-              tickFormatter={fmtK}
-              tick={{ fontSize: 10, fill: '#94a3b8' }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              type="category"
-              dataKey="name"
-              width={72}
-              tick={{ fontSize: 11, fill: '#64748b' }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <Bar dataKey="value" radius={[0, 3, 3, 0]} maxBarSize={22} isAnimationActive={false}>
-              {chartData.map((entry, i) => (
-                <Cell key={i} fill={entry.color} />
-              ))}
-              <LabelList
-                dataKey="value"
-                position="right"
-                style={{ fontSize: 11, fill: '#374151', fontWeight: 500 }}
-                formatter={(v: unknown) => Number(v).toLocaleString()}
+
+      {/* Bar rows */}
+      <div className="flex-1 space-y-1.5">
+        {bars.map((bar, i) => (
+          <div key={i} className="flex items-center gap-2">
+            {/* Series label — right-aligned, fixed width */}
+            <div className="w-20 flex-shrink-0 pr-1 text-right text-xs text-slate-500">
+              {bar.label}
+            </div>
+            {/* Bar track */}
+            <div className="relative flex-1 h-[22px] overflow-hidden rounded-sm bg-slate-100">
+              <div
+                className="absolute inset-y-0 left-0 rounded-sm"
+                style={{ width: `${(bar.value / maxValue) * 100}%`, backgroundColor: bar.color }}
               />
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+            </div>
+            {/* Value */}
+            <div className="w-16 flex-shrink-0 text-xs font-medium text-slate-700">
+              {bar.value.toLocaleString()}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -151,8 +126,10 @@ export default function ComparisonBarWidget({
       return true;
     });
 
-    return groupObj.tags.map((tag) => {
-      const bars = series.map((s, i) => ({
+    return groupObj.tags.map((tag) => ({
+      tagLabel: tag.label,
+      tagName: tag.tag,
+      bars: series.map((s, i) => ({
         label: s.label,
         color: resolveColor(s, i, accent),
         value: baseLeads.filter((lead) => {
@@ -160,14 +137,12 @@ export default function ComparisonBarWidget({
           if (s.tagLabel && !lead.tags.get(s.tagLabel)?.applied) return false;
           return true;
         }).length,
-      }));
-      return { tagLabel: tag.label, tagName: tag.tag, bars };
-    });
+      })),
+    }));
   }, [leads, groupObj, series, datePreset, query.startDate, query.endDate, accent]);
 
   const configPanel = (
     <div className="space-y-3">
-      {/* Tag group */}
       <div>
         <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Tag group (facets)</label>
         <select
@@ -179,7 +154,6 @@ export default function ComparisonBarWidget({
         </select>
       </div>
 
-      {/* Series editor */}
       <div>
         <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Series</label>
         <div className="space-y-1.5">
@@ -262,12 +236,7 @@ export default function ComparisonBarWidget({
             </div>
           ))}
           <button
-            onClick={() =>
-              updateSeries([
-                ...series,
-                { id: `s-${Date.now()}`, label: 'New Series', tagLabel: '' },
-              ])
-            }
+            onClick={() => updateSeries([...series, { id: `s-${Date.now()}`, label: 'New Series', tagLabel: '' }])}
             className="flex items-center gap-1 rounded border border-dashed border-slate-300 px-2 py-1 text-xs text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-700"
           >
             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -278,7 +247,6 @@ export default function ComparisonBarWidget({
         </div>
       </div>
 
-      {/* Date range */}
       <div>
         <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Date range</label>
         <div className="flex flex-wrap gap-1">
