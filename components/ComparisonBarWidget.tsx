@@ -41,16 +41,22 @@ function TagSection({
   bars: { label: string; value: number; color: string }[];
 }) {
   const chartData = bars.map((b) => ({ name: b.label, value: b.value, color: b.color }));
-  const height = Math.max(60, bars.length * 32 + 28);
+  // x-axis ticks take ~24px at the bottom; offset the position label to center over bars only
+  const xAxisHeight = 24;
+  const height = Math.max(64, bars.length * 32 + xAxisHeight + 8);
 
   return (
     <div className="flex items-stretch border-b border-slate-100 pb-1 last:border-0">
-      <div className="flex w-28 flex-shrink-0 items-center justify-end pr-3 text-right text-xs font-medium text-slate-600">
+      {/* Position name: centered over the bar rows, not the x-axis */}
+      <div
+        className="flex w-28 flex-shrink-0 flex-col justify-center pr-3 text-right text-xs font-medium text-slate-600"
+        style={{ paddingBottom: xAxisHeight }}
+      >
         {tagName}
       </div>
       <div className="flex-1">
         <ResponsiveContainer width="100%" height={height}>
-          <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 60, left: 0, bottom: 20 }}>
+          <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 60, left: 0, bottom: xAxisHeight }}>
             <XAxis
               type="number"
               domain={[0, 'auto']}
@@ -59,7 +65,14 @@ function TagSection({
               axisLine={false}
               tickLine={false}
             />
-            <YAxis type="category" dataKey="name" hide />
+            <YAxis
+              type="category"
+              dataKey="name"
+              width={72}
+              tick={{ fontSize: 11, fill: '#64748b' }}
+              axisLine={false}
+              tickLine={false}
+            />
             <Bar dataKey="value" radius={[0, 3, 3, 0]} maxBarSize={22} isAnimationActive={false}>
               {chartData.map((entry, i) => (
                 <Cell key={i} fill={entry.color} />
@@ -304,19 +317,6 @@ export default function ComparisonBarWidget({
       configPanel={configPanel}
     >
       <div className="px-4 pb-4 pt-2">
-        {/* Legend */}
-        <div className="mb-3 flex flex-wrap items-center gap-4 pl-28">
-          {series.map((s, i) => (
-            <span key={s.id} className="flex items-center gap-1.5 text-xs text-slate-600">
-              <span
-                className="inline-block h-2.5 w-2.5 rounded-full"
-                style={{ background: resolveColor(s, i, accent) }}
-              />
-              {s.label}
-            </span>
-          ))}
-        </div>
-
         {sectionData.length === 0 ? (
           <div className="flex h-32 items-center justify-center text-sm text-slate-400">
             Select a tag group in settings
