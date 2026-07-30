@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ChartConfig, ClientTab, ParsedData, TextBlockPosition, ReportTextBlock } from '@/lib/types';
 import type { ReportConfig, ReportPage, ReportHistoryEntry } from '@/lib/types';
 import type { StoredClient, SpendEntry } from '@/lib/useClients';
@@ -1027,6 +1027,20 @@ export default function ReportBuilder({
     return () => clearTimeout(saveTimer.current);
   }, []);
 
+  // Sync text block editor content when selected page or text block position changes.
+  // We do NOT use dangerouslySetInnerHTML on the contentEditable editor because React
+  // overwrites innerHTML on every re-render, erasing what the user is typing.
+  // Instead we imperatively set innerHTML only when the page or position actually changes.
+  const _tbPage = config.pages.find((p) => p.id === selectedPageId);
+  const _tbPosition = _tbPage?.type === 'chart' ? (_tbPage.textBlock?.position ?? null) : null;
+  useLayoutEffect(() => {
+    if (!textBlockEditorRef.current) return;
+    const page = config.pages.find((p) => p.id === selectedPageId);
+    const content = page?.type === 'chart' && page.textBlock ? page.textBlock.content : '';
+    textBlockEditorRef.current.innerHTML = content;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPageId, _tbPosition]);
+
   // Build ordered pages list: cover, ...config.pages, takeaways
   const totalPages = 1 + config.pages.length + 1; // cover + pages + takeaways
 
@@ -1907,7 +1921,6 @@ export default function ReportBuilder({
                   ref={textBlockEditorRef}
                   contentEditable
                   suppressContentEditableWarning
-                  dangerouslySetInnerHTML={{ __html: page.textBlock.content }}
                   onBlur={() => {
                     const html = textBlockEditorRef.current?.innerHTML ?? '';
                     updateTextBlock(page.id, { content: html });
