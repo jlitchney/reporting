@@ -81,16 +81,16 @@ export default function FunnelWidget({ data, config, accent, onUpdate, onRemove,
         >
           <option value="">+ Add stage…</option>
           {!funnelStages.includes('__all__') && <option value="__all__">All Candidates</option>}
-          <optgroup label="— Has tag">
-            {tagGroups.flatMap((g) => g.tags.filter((t) => !funnelStages.includes(t.label) && !funnelStages.includes('!' + t.label)).map((t) => (
-              <option key={t.label} value={t.label}>{t.tag}</option>
-            )))}
-          </optgroup>
-          <optgroup label="— Does NOT have tag">
-            {tagGroups.flatMap((g) => g.tags.filter((t) => !funnelStages.includes(t.label) && !funnelStages.includes('!' + t.label)).map((t) => (
-              <option key={'!' + t.label} value={'!' + t.label}>NOT {t.tag}</option>
-            )))}
-          </optgroup>
+          {tagGroups.map((g) => {
+            const available = g.tags.filter((t) => !funnelStages.includes(t.label) && !funnelStages.includes('!' + t.label));
+            if (!available.length) return null;
+            return <optgroup key={g.name} label={g.name}>{available.map((t) => <option key={t.label} value={t.label}>{t.tag}</option>)}</optgroup>;
+          })}
+          {tagGroups.map((g) => {
+            const available = g.tags.filter((t) => !funnelStages.includes(t.label) && !funnelStages.includes('!' + t.label));
+            if (!available.length) return null;
+            return <optgroup key={'not-' + g.name} label={`NOT — ${g.name}`}>{available.map((t) => <option key={'!' + t.label} value={'!' + t.label}>NOT {t.tag}</option>)}</optgroup>;
+          })}
         </select>
       </div>
 
