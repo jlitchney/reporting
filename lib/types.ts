@@ -111,9 +111,12 @@ export interface ClientTab {
 
 export interface ReportPage {
   id: string;
-  type: 'chart' | 'summary';
-  chartId?: string;  // for type='chart', references ChartConfig.id in the active tab
-  title?: string;    // optional title override
+  type: 'chart' | 'summary' | 'notes';
+  chartId?: string;   // for type='chart', references ChartConfig.id in the active tab
+  chartId2?: string;  // second chart for 2-chart layout
+  layout?: '1-chart' | '2-charts';  // defaults to '1-chart'
+  title?: string;     // optional title override
+  notesContent?: string;  // HTML string for notes type
 }
 
 export interface ReportConfig {
@@ -121,7 +124,15 @@ export interface ReportConfig {
   coverSubtitle: string;
   coverDateRange: string;
   coverBgColor: string;
+  coverImageUrl?: string;
   pages: ReportPage[];
   takeaways: string;
   takeawaysBullets: string;  // newline-separated bullet points for left column
+}
+
+export interface ReportHistoryEntry {
+  id: string;
+  savedAt: string;   // ISO timestamp
+  label: string;     // e.g. "7/13/2026 - 7/19/2026" (coverDateRange)
+  config: ReportConfig;
 }

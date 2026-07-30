@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { upload } from '@vercel/blob/client';
 import { parseCSV } from './csvParser';
-import type { ParsedData, ChartConfig, ClientTab, ReportConfig } from './types';
+import type { ParsedData, ChartConfig, ClientTab, ReportConfig, ReportHistoryEntry } from './types';
 import type { SpendEntry } from './redis';
 
 export type { SpendEntry };
@@ -16,6 +16,7 @@ export interface StoredClient {
   lastUpdated: string;
   spendData?: SpendEntry[];
   reportConfig?: ReportConfig;
+  reportHistory?: ReportHistoryEntry[];
 }
 
 function migrateClient(raw: Record<string, unknown>): StoredClient {
@@ -218,6 +219,17 @@ export function useClients() {
     patchClient(clientId, { reportConfig });
   }, []);
 
+  const addReportHistory = useCallback((clientId: string, entry: ReportHistoryEntry) => {
+    setClients((prev) =>
+      prev.map((c) => {
+        if (c.id !== clientId) return c;
+        const history = [entry, ...(c.reportHistory ?? [])].slice(0, 20); // keep last 20
+        patchClient(clientId, { reportHistory: history });
+        return { ...c, reportHistory: history };
+      })
+    );
+  }, []);
+
   const activeClient = clients.find((c) => c.id === activeClientId) ?? null;
   const activeTab = activeClient?.tabs.find((t) => t.id === activeTabId) ?? activeClient?.tabs[0] ?? null;
 
@@ -241,5 +253,6 @@ export function useClients() {
     removeClient,
     updateSpend,
     updateReportConfig,
+    addReportHistory,
   };
 }

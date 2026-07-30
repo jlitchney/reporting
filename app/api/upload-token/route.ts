@@ -8,7 +8,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       body,
       request: req,
       onBeforeGenerateToken: async () => ({
-        allowedContentTypes: ['text/csv', 'text/plain', 'application/octet-stream'],
+        allowedContentTypes: ['text/csv', 'text/plain', 'application/octet-stream', 'image/jpeg', 'image/png', 'image/webp', 'image/gif'],
         maximumSizeInBytes: 100 * 1024 * 1024,
       }),
       onUploadCompleted: async () => {},

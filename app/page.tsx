@@ -19,7 +19,7 @@ import ComparisonBarWidget from '@/components/ComparisonBarWidget';
 import ReportBuilder from '@/components/ReportBuilder';
 import { useClients } from '@/lib/useClients';
 import { clientNameFromFilename } from '@/lib/csvParser';
-import type { ChartConfig } from '@/lib/types';
+import type { ChartConfig, ReportHistoryEntry } from '@/lib/types';
 
 export default function Home() {
   const {
@@ -42,6 +42,7 @@ export default function Home() {
     removeClient,
     updateSpend,
     updateReportConfig,
+    addReportHistory,
   } = useClients();
 
   const refreshInputRef = useRef<HTMLInputElement>(null);
@@ -394,6 +395,7 @@ export default function Home() {
           spendData={activeClient.spendData ?? []}
           onClose={() => setShowReportBuilder(false)}
           onSave={(config) => updateReportConfig(activeClient.id, config)}
+          onAddHistory={(entry: ReportHistoryEntry) => addReportHistory(activeClient.id, entry)}
         />
       )}
     </div>

@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { upload } from '@vercel/blob/client';
 import type { ChartConfig, ClientTab, ParsedData } from '@/lib/types';
-import type { ReportConfig, ReportPage } from '@/lib/types';
+import type { ReportConfig, ReportPage, ReportHistoryEntry } from '@/lib/types';
 import type { StoredClient, SpendEntry } from '@/lib/useClients';
 import { generatePdf } from '@/lib/generatePdf';
 import { CHART_ACCENT_COLORS } from '@/components/ChartPanel';
@@ -29,6 +30,7 @@ interface Props {
   spendData: SpendEntry[];
   onClose: () => void;
   onSave: (config: ReportConfig) => void;
+  onAddHistory: (entry: ReportHistoryEntry) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -53,13 +55,6 @@ function accentForWidget(widget: ChartConfig, allWidgets: ChartConfig[]): string
   if (widget.color) return widget.color;
   const idx = allWidgets.findIndex((w) => w.id === widget.id);
   return CHART_ACCENT_COLORS[Math.max(0, idx) % CHART_ACCENT_COLORS.length];
-}
-
-function defaultAccent(client: StoredClient): string {
-  const firstTab = client.tabs[0];
-  if (!firstTab) return '#1e3a6e';
-  const firstChart = firstTab.chartConfigs[0];
-  return firstChart?.color ?? '#1e3a6e';
 }
 
 function buildDefaultConfig(client: StoredClient, activeTab: ClientTab): ReportConfig {
@@ -162,12 +157,13 @@ function PageFooter({
 // ---------------------------------------------------------------------------
 
 function CoverPageRender({ config }: { config: ReportConfig }) {
+  const hasCoverImage = !!config.coverImageUrl;
+
   return (
     <div
       style={{
         width: 1056,
         height: 816,
-        backgroundColor: config.coverBgColor,
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'flex-end',
@@ -175,19 +171,37 @@ function CoverPageRender({ config }: { config: ReportConfig }) {
         position: 'relative',
         overflow: 'hidden',
         fontFamily: 'system-ui, -apple-system, sans-serif',
+        ...(hasCoverImage
+          ? {
+              backgroundImage: `url(${config.coverImageUrl})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }
+          : { backgroundColor: config.coverBgColor }),
       }}
     >
+      {/* Dark overlay when cover image is set */}
+      {hasCoverImage && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.45)',
+          }}
+        />
+      )}
+
       {/* Logo top-right */}
       <img
         src="/logo-white.png"
         alt=""
-        style={{ position: 'absolute', top: 40, right: 40, height: 32 }}
+        style={{ position: 'absolute', top: 40, right: 40, height: 32, zIndex: 1 }}
         onError={(e) => {
           (e.target as HTMLImageElement).style.display = 'none';
         }}
       />
       {/* Main content */}
-      <div>
+      <div style={{ position: 'relative', zIndex: 1 }}>
         <div
           style={{
             fontSize: 72,
@@ -224,6 +238,7 @@ function CoverPageRender({ config }: { config: ReportConfig }) {
           right: 0,
           height: 6,
           backgroundColor: 'rgba(255,255,255,0.2)',
+          zIndex: 1,
         }}
       />
     </div>
@@ -321,12 +336,14 @@ function SummaryPageRender({
 }
 
 // ---------------------------------------------------------------------------
-// Chart page
+// Chart page (1-chart and 2-chart layouts)
 // ---------------------------------------------------------------------------
 
 function ChartPageRender({
   config,
+  page,
   chartConfig,
+  chartConfig2,
   pageTitle,
   parsedData,
   accent,
@@ -335,7 +352,9 @@ function ChartPageRender({
   totalPages,
 }: {
   config: ReportConfig;
+  page: ReportPage;
   chartConfig: ChartConfig;
+  chartConfig2?: ChartConfig;
   pageTitle: string;
   parsedData: ParsedData;
   accent: string;
@@ -343,6 +362,76 @@ function ChartPageRender({
   pageNum: number;
   totalPages: number;
 }) {
+  const layout = page.layout ?? '1-chart';
+  const isTwoChart = layout === '2-charts' && !!chartConfig2;
+
+  if (isTwoChart) {
+    const enlarged1: ChartConfig = { ...chartConfig, chartHeight: 480, colSpan: 4 };
+    const enlarged2: ChartConfig = { ...chartConfig2, chartHeight: 480, colSpan: 4 };
+    const accent2 = accentForWidget(chartConfig2, [chartConfig2]);
+
+    return (
+      <div
+        style={{
+          width: 1056,
+          height: 816,
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundColor: '#ffffff',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+        }}
+      >
+        <div style={{ height: 8, backgroundColor: accent }} />
+        <div style={{ padding: '20px 40px', borderBottom: '1px solid #f1f5f9' }}>
+          <h1
+            style={{
+              fontSize: 20,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              color: '#334155',
+              margin: 0,
+            }}
+          >
+            {pageTitle}
+          </h1>
+        </div>
+        <div
+          style={{
+            flex: 1,
+            padding: '12px 16px',
+            overflow: 'hidden',
+            display: 'flex',
+            gap: 16,
+          }}
+        >
+          <div style={{ flex: '0 0 496px', width: 496, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {chartConfig.title}
+            </div>
+            <div style={{ flex: 1 }}>
+              {renderWidget(enlarged1, parsedData, accent, spendData)}
+            </div>
+          </div>
+          <div style={{ flex: '0 0 496px', width: 496, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {chartConfig2.title}
+            </div>
+            <div style={{ flex: 1 }}>
+              {renderWidget(enlarged2, parsedData, accent2, spendData)}
+            </div>
+          </div>
+        </div>
+        <PageFooter
+          clientName={config.coverSubtitle}
+          pageNum={pageNum}
+          totalPages={totalPages}
+        />
+      </div>
+    );
+  }
+
+  // 1-chart layout
   const enlarged: ChartConfig = { ...chartConfig, chartHeight: 560, colSpan: 4 };
 
   return (
@@ -390,6 +479,46 @@ function ChartPageRender({
         pageNum={pageNum}
         totalPages={totalPages}
       />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Notes page
+// ---------------------------------------------------------------------------
+
+function NotesPageRender({
+  page,
+  accent,
+  pageNum,
+  totalPages,
+  clientName,
+}: {
+  page: ReportPage;
+  accent: string;
+  pageNum: number;
+  totalPages: number;
+  clientName: string;
+}) {
+  return (
+    <div
+      style={{
+        width: 1056,
+        height: 816,
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#ffffff',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+      }}
+    >
+      <div style={{ height: 8, backgroundColor: accent, flexShrink: 0 }} />
+      <div
+        style={{ flex: 1, padding: '32px 48px', overflow: 'hidden' }}
+        dangerouslySetInnerHTML={{
+          __html: page.notesContent ?? '<p style="color:#94a3b8">Notes page — add content in the editor.</p>',
+        }}
+      />
+      <PageFooter clientName={clientName} pageNum={pageNum} totalPages={totalPages} />
     </div>
   );
 }
@@ -523,7 +652,7 @@ function TakeawaysPageRender({
 }
 
 // ---------------------------------------------------------------------------
-// Color palette for cover background picker
+// Color palette for cover background picker / notes font color
 // ---------------------------------------------------------------------------
 
 const BG_COLORS = [
@@ -539,6 +668,140 @@ const BG_COLORS = [
   '#374151',
 ];
 
+const FONT_COLORS = [
+  '#1e293b',
+  '#334155',
+  '#0f172a',
+  '#1e3a6e',
+  '#1e40af',
+  '#065f46',
+  '#7c3aed',
+  '#be185d',
+  '#c2410c',
+  '#78350f',
+  '#374151',
+  '#ffffff',
+];
+
+// ---------------------------------------------------------------------------
+// Notes editor toolbar
+// ---------------------------------------------------------------------------
+
+function NotesToolbar({ onColorPick }: { onColorPick: (color: string) => void }) {
+  const [showColorPicker, setShowColorPicker] = useState(false);
+
+  const exec = (cmd: string, value?: string) => {
+    try {
+      document.execCommand('styleWithCSS', false, 'true');
+      if (value !== undefined) {
+        document.execCommand(cmd, false, value);
+      } else {
+        document.execCommand(cmd, false);
+      }
+    } catch {
+      // ignore browser quirks
+    }
+  };
+
+  const btnStyle: React.CSSProperties = {
+    padding: '4px 8px',
+    border: '1px solid #e2e8f0',
+    borderRadius: 4,
+    backgroundColor: '#ffffff',
+    cursor: 'pointer',
+    fontSize: 12,
+    color: '#334155',
+    fontWeight: 600,
+  };
+
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+      <button style={{ ...btnStyle, fontWeight: 700 }} onMouseDown={(e) => { e.preventDefault(); exec('bold'); }} title="Bold">
+        B
+      </button>
+      <button style={{ ...btnStyle, fontStyle: 'italic' }} onMouseDown={(e) => { e.preventDefault(); exec('italic'); }} title="Italic">
+        I
+      </button>
+
+      <select
+        style={{ ...btnStyle, padding: '4px 6px' }}
+        defaultValue=""
+        onChange={(e) => {
+          exec('fontSize', e.target.value);
+          e.target.value = '';
+        }}
+        title="Font size"
+      >
+        <option value="" disabled>Size</option>
+        <option value="2">Small</option>
+        <option value="3">Normal</option>
+        <option value="4">Large</option>
+        <option value="6">X-Large</option>
+      </select>
+
+      <div style={{ position: 'relative' }}>
+        <button
+          style={{ ...btnStyle }}
+          onMouseDown={(e) => { e.preventDefault(); setShowColorPicker((v) => !v); }}
+          title="Font color"
+        >
+          A<span style={{ display: 'inline-block', width: 8, height: 3, backgroundColor: '#1e3a6e', marginLeft: 2, verticalAlign: 'middle' }} />
+        </button>
+        {showColorPicker && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              zIndex: 20,
+              backgroundColor: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: 6,
+              padding: 8,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 4,
+              width: 120,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            }}
+          >
+            {FONT_COLORS.map((color) => (
+              <button
+                key={color}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  exec('foreColor', color);
+                  onColorPick(color);
+                  setShowColorPicker(false);
+                }}
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 3,
+                  backgroundColor: color,
+                  border: '1px solid #e2e8f0',
+                  cursor: 'pointer',
+                  padding: 0,
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <button style={btnStyle} onMouseDown={(e) => { e.preventDefault(); exec('insertUnorderedList'); }} title="Bullet list">
+        &#8226;&#8226;
+      </button>
+      <button style={btnStyle} onMouseDown={(e) => { e.preventDefault(); exec('justifyLeft'); }} title="Align left">
+        &#8676;
+      </button>
+      <button style={btnStyle} onMouseDown={(e) => { e.preventDefault(); exec('justifyCenter'); }} title="Align center">
+        &#8677;
+      </button>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Main ReportBuilder component
 // ---------------------------------------------------------------------------
@@ -550,6 +813,7 @@ export default function ReportBuilder({
   spendData,
   onClose,
   onSave,
+  onAddHistory,
 }: Props) {
   const [config, setConfig] = useState<ReportConfig>(() => {
     return client.reportConfig ?? buildDefaultConfig(client, activeTab);
@@ -562,9 +826,13 @@ export default function ReportBuilder({
   const [selectedPageId, setSelectedPageId] = useState<string>('cover');
   const [generating, setGenerating] = useState(false);
   const [showAddChart, setShowAddChart] = useState(false);
+  const [rightPanelMode, setRightPanelMode] = useState<'edit' | 'history'>('edit');
+  const [coverUploading, setCoverUploading] = useState(false);
+  const coverFileRef = useRef<HTMLInputElement>(null);
 
   const renderRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const notesEditorRef = useRef<HTMLDivElement>(null);
 
   // Auto-save with 800ms debounce
   const updateConfig = useCallback(
@@ -585,7 +853,6 @@ export default function ReportBuilder({
   }, []);
 
   // Build ordered pages list: cover, ...config.pages, takeaways
-  const allPageIds = ['cover', ...config.pages.map((p) => p.id), 'takeaways'];
   const totalPages = 1 + config.pages.length + 1; // cover + pages + takeaways
 
   // Page number calculation: cover=1, pages[i]=2+i, takeaways=last
@@ -598,7 +865,7 @@ export default function ReportBuilder({
 
   // Charts available to add (not already in the page list, non-total)
   const chartsInPages = new Set(
-    config.pages.filter((p) => p.type === 'chart').map((p) => p.chartId)
+    config.pages.filter((p) => p.type === 'chart').flatMap((p) => [p.chartId, p.chartId2].filter(Boolean))
   );
   const availableCharts = activeTab.chartConfigs.filter(
     (w) => (w.type ?? 'bar') !== 'total' && !chartsInPages.has(w.id)
@@ -617,6 +884,16 @@ export default function ReportBuilder({
     updateConfig({ pages: [...config.pages, newPage] });
     setSelectedPageId(newPage.id);
     setShowAddChart(false);
+  };
+
+  const addNotesPage = () => {
+    const newPage: ReportPage = {
+      id: `page-notes-${Date.now()}`,
+      type: 'notes',
+      notesContent: '',
+    };
+    updateConfig({ pages: [...config.pages, newPage] });
+    setSelectedPageId(newPage.id);
   };
 
   const removePage = (pageId: string) => {
@@ -659,6 +936,27 @@ export default function ReportBuilder({
   };
 
   // -------------------------------------------------------------------------
+  // Cover photo upload
+  // -------------------------------------------------------------------------
+
+  const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverUploading(true);
+    try {
+      const blob = await upload(
+        `report-covers/${client.id}-cover-${Date.now()}.jpg`,
+        file,
+        { access: 'public', handleUploadUrl: '/api/upload-token' }
+      );
+      updateConfig({ coverImageUrl: blob.url });
+    } finally {
+      setCoverUploading(false);
+      if (coverFileRef.current) coverFileRef.current.value = '';
+    }
+  };
+
+  // -------------------------------------------------------------------------
   // Download
   // -------------------------------------------------------------------------
 
@@ -670,6 +968,12 @@ export default function ReportBuilder({
       ) as HTMLElement[];
       const filename = `${client.name.toLowerCase().replace(/\s+/g, '-')}-report.pdf`;
       await generatePdf(pageEls, filename);
+      onAddHistory({
+        id: Date.now().toString(),
+        savedAt: new Date().toISOString(),
+        label: config.coverDateRange,
+        config,
+      });
     } finally {
       setGenerating(false);
     }
@@ -679,7 +983,7 @@ export default function ReportBuilder({
   // Render a page component by id (for both preview and hidden render)
   // -------------------------------------------------------------------------
 
-  function renderPageById(pageId: string, opts?: { hideFooter?: boolean }): React.ReactNode {
+  function renderPageById(pageId: string): React.ReactNode {
     const pageNum = getPageNum(pageId);
     const effectiveTotalPages = totalPages;
 
@@ -714,6 +1018,18 @@ export default function ReportBuilder({
       );
     }
 
+    if (page.type === 'notes') {
+      return (
+        <NotesPageRender
+          page={page}
+          accent={accent}
+          pageNum={pageNum}
+          totalPages={effectiveTotalPages}
+          clientName={config.coverSubtitle}
+        />
+      );
+    }
+
     if (page.type === 'chart' && page.chartId) {
       const chartConfig = activeTab.chartConfigs.find((w) => w.id === page.chartId);
       if (!chartConfig) {
@@ -734,13 +1050,17 @@ export default function ReportBuilder({
           </div>
         );
       }
-      const pageTitle =
-        page.title || chartConfig.title;
+      const chartConfig2 = page.chartId2
+        ? activeTab.chartConfigs.find((w) => w.id === page.chartId2)
+        : undefined;
+      const pageTitle = page.title || chartConfig.title;
       const chartAccent = accentForWidget(chartConfig, activeTab.chartConfigs);
       return (
         <ChartPageRender
           config={config}
+          page={page}
           chartConfig={chartConfig}
+          chartConfig2={chartConfig2}
           pageTitle={pageTitle}
           parsedData={parsedData}
           accent={chartAccent}
@@ -850,6 +1170,73 @@ export default function ReportBuilder({
               />
             </div>
           </div>
+
+          {/* Cover photo upload */}
+          <div>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>
+              Cover Photo
+            </span>
+            {config.coverImageUrl && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <img
+                  src={config.coverImageUrl}
+                  alt="Cover"
+                  style={{ height: 60, borderRadius: 4, border: '1px solid #e2e8f0', objectFit: 'cover' }}
+                />
+                <button
+                  onClick={() => updateConfig({ coverImageUrl: undefined })}
+                  style={{
+                    padding: '4px 8px',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 4,
+                    backgroundColor: '#ffffff',
+                    cursor: 'pointer',
+                    fontSize: 11,
+                    color: '#ef4444',
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+            <input
+              ref={coverFileRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={handleCoverFileChange}
+            />
+            <button
+              onClick={() => coverFileRef.current?.click()}
+              disabled={coverUploading}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                border: '1px dashed #cbd5e1',
+                borderRadius: 6,
+                backgroundColor: 'transparent',
+                cursor: coverUploading ? 'not-allowed' : 'pointer',
+                color: '#64748b',
+                fontSize: 12,
+              }}
+            >
+              {coverUploading ? (
+                <>
+                  <div style={{ width: 12, height: 12, border: '2px solid #e2e8f0', borderTopColor: '#1e3a6e', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                  Uploading…
+                </>
+              ) : (
+                <>
+                  <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Upload Cover Photo
+                </>
+              )}
+            </button>
+          </div>
         </div>
       );
     }
@@ -925,8 +1312,57 @@ export default function ReportBuilder({
       );
     }
 
+    if (page.type === 'notes') {
+      return (
+        <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h2 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Notes Page
+          </h2>
+          <NotesToolbar onColorPick={() => {}} />
+          <div
+            ref={notesEditorRef}
+            contentEditable
+            suppressContentEditableWarning
+            dangerouslySetInnerHTML={{ __html: page.notesContent ?? '' }}
+            onBlur={() => {
+              const html = notesEditorRef.current?.innerHTML ?? '';
+              updateConfig({
+                pages: config.pages.map((p) =>
+                  p.id === page.id ? { ...p, notesContent: html } : p
+                ),
+              });
+            }}
+            style={{
+              minHeight: 400,
+              padding: 16,
+              border: '1px solid #e2e8f0',
+              borderRadius: 8,
+              outline: 'none',
+              fontSize: 14,
+              lineHeight: 1.6,
+              color: '#1e293b',
+            }}
+          />
+        </div>
+      );
+    }
+
     if (page.type === 'chart' && page.chartId) {
       const chartConfig = activeTab.chartConfigs.find((w) => w.id === page.chartId);
+      const currentLayout = page.layout ?? '1-chart';
+      // All charts not in other pages (but allow swapping within this page)
+      const usedChartIds = new Set(
+        config.pages
+          .filter((p) => p.id !== page.id && p.type === 'chart')
+          .flatMap((p) => [p.chartId, p.chartId2].filter(Boolean))
+      );
+      const allNonTotalCharts = activeTab.chartConfigs.filter(
+        (w) => (w.type ?? 'bar') !== 'total'
+      );
+      const availableForSecond = allNonTotalCharts.filter(
+        (w) => !usedChartIds.has(w.id) && w.id !== page.chartId
+      );
+
       return (
         <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <h2 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -961,11 +1397,187 @@ export default function ReportBuilder({
               }}
             />
           </label>
+
+          {/* Layout toggle */}
+          <div>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>
+              Layout
+            </span>
+            <div style={{ display: 'flex', gap: 0, border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden', width: 'fit-content' }}>
+              {(['1-chart', '2-charts'] as const).map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => {
+                    if (opt === '1-chart') {
+                      updateConfig({
+                        pages: config.pages.map((p) =>
+                          p.id === page.id ? { ...p, layout: '1-chart', chartId2: undefined } : p
+                        ),
+                      });
+                    } else {
+                      updateConfig({
+                        pages: config.pages.map((p) =>
+                          p.id === page.id ? { ...p, layout: '2-charts' } : p
+                        ),
+                      });
+                    }
+                  }}
+                  style={{
+                    padding: '5px 12px',
+                    border: 'none',
+                    backgroundColor: currentLayout === opt ? '#1e3a6e' : '#ffffff',
+                    color: currentLayout === opt ? '#ffffff' : '#64748b',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {opt === '1-chart' ? '1 Chart' : '2 Charts'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Second chart selector */}
+          {currentLayout === '2-charts' && (
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Second Chart
+              </span>
+              <select
+                value={page.chartId2 ?? ''}
+                onChange={(e) => {
+                  updateConfig({
+                    pages: config.pages.map((p) =>
+                      p.id === page.id ? { ...p, chartId2: e.target.value || undefined } : p
+                    ),
+                  });
+                }}
+                style={{
+                  padding: '6px 10px',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 6,
+                  fontSize: 13,
+                  color: '#1e293b',
+                  outline: 'none',
+                }}
+              >
+                <option value="">— Select chart —</option>
+                {availableForSecond.map((w) => (
+                  <option key={w.id} value={w.id}>{w.title}</option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
       );
     }
 
     return null;
+  }
+
+  // -------------------------------------------------------------------------
+  // History panel
+  // -------------------------------------------------------------------------
+
+  function renderHistoryPanel() {
+    const history = client.reportHistory ?? [];
+    return (
+      <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <h2 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Report History
+        </h2>
+        {history.length === 0 ? (
+          <p style={{ fontSize: 13, color: '#94a3b8', margin: 0 }}>
+            No history yet. Download a PDF to save a snapshot.
+          </p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {history.map((entry) => (
+              <div
+                key={entry.id}
+                style={{
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 8,
+                  padding: 12,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>
+                  {entry.label || '(no date range)'}
+                </div>
+                <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                  Saved on {new Date(entry.savedAt).toLocaleString()}
+                </div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Load this saved report? Current changes will be replaced.')) {
+                        setConfig(entry.config);
+                        onSave(entry.config);
+                        setRightPanelMode('edit');
+                        setSelectedPageId('cover');
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '4px 8px',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 4,
+                      backgroundColor: '#ffffff',
+                      cursor: 'pointer',
+                      fontSize: 11,
+                      color: '#334155',
+                    }}
+                  >
+                    Load
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setGenerating(true);
+                      try {
+                        // Temporarily set config to history entry for render, then restore
+                        // We use a hidden approach: create a temporary clone render
+                        const pageEls = Array.from(
+                          renderRef.current!.querySelectorAll('[data-report-page]')
+                        ) as HTMLElement[];
+                        // We need to render with the history config. For now load, generate, restore.
+                        const current = config;
+                        setConfig(entry.config);
+                        // Wait a tick for React to re-render
+                        await new Promise((r) => setTimeout(r, 300));
+                        const freshEls = Array.from(
+                          renderRef.current!.querySelectorAll('[data-report-page]')
+                        ) as HTMLElement[];
+                        const filename = `${client.name.toLowerCase().replace(/\s+/g, '-')}-report-${entry.id}.pdf`;
+                        await generatePdf(freshEls, filename);
+                        setConfig(current);
+                      } finally {
+                        setGenerating(false);
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '4px 8px',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 4,
+                      backgroundColor: '#ffffff',
+                      cursor: 'pointer',
+                      fontSize: 11,
+                      color: '#1e3a6e',
+                    }}
+                  >
+                    ↓ Download
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -1028,46 +1640,74 @@ export default function ReportBuilder({
           </span>
         </div>
 
-        <button
-          onClick={handleDownload}
-          disabled={generating}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            backgroundColor: generating ? '#374151' : '#ffffff',
-            color: generating ? '#9ca3af' : '#1e3a6e',
-            border: 'none',
-            borderRadius: 8,
-            padding: '6px 14px',
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: generating ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {generating ? (
-            <>
-              <svg
-                style={{ animation: 'spin 1s linear infinite' }}
-                width="14"
-                height="14"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Generating…
-            </>
-          ) : (
-            <>
-              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              Download PDF
-            </>
-          )}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* History toggle button */}
+          <button
+            onClick={() => setRightPanelMode((m) => m === 'history' ? 'edit' : 'history')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: rightPanelMode === 'history' ? 'rgba(255,255,255,0.2)' : 'transparent',
+              color: 'rgba(255,255,255,0.8)',
+              border: '1px solid rgba(255,255,255,0.25)',
+              borderRadius: 8,
+              padding: '5px 12px',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+            title="Report history"
+          >
+            {/* Clock icon */}
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <circle cx="12" cy="12" r="10" strokeWidth={2} />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6l4 2" />
+            </svg>
+            History
+          </button>
+
+          <button
+            onClick={handleDownload}
+            disabled={generating}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: generating ? '#374151' : '#ffffff',
+              color: generating ? '#9ca3af' : '#1e3a6e',
+              border: 'none',
+              borderRadius: 8,
+              padding: '6px 14px',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: generating ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {generating ? (
+              <>
+                <svg
+                  style={{ animation: 'spin 1s linear infinite' }}
+                  width="14"
+                  height="14"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Generating…
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download PDF
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Main content area */}
@@ -1173,13 +1813,20 @@ export default function ReportBuilder({
               );
             })()}
 
-            {/* Chart pages */}
+            {/* Chart and notes pages */}
             {config.pages
-              .filter((p) => p.type === 'chart')
+              .filter((p) => p.type === 'chart' || p.type === 'notes')
               .map((page) => {
-                const chart = activeTab.chartConfigs.find((w) => w.id === page.chartId);
-                const chartIdx = config.pages.filter((p) => p.type === 'chart').indexOf(page);
-                const allChartPages = config.pages.filter((p) => p.type === 'chart');
+                const allMovablePages = config.pages.filter((p) => p.type === 'chart' || p.type === 'notes');
+                const pageIdx = allMovablePages.indexOf(page);
+
+                const label = page.type === 'notes'
+                  ? (page.title || 'Notes')
+                  : (() => {
+                      const chart = activeTab.chartConfigs.find((w) => w.id === page.chartId);
+                      return page.title || chart?.title || 'Chart';
+                    })();
+
                 return (
                   <div
                     key={page.id}
@@ -1207,9 +1854,12 @@ export default function ReportBuilder({
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
                       }}
-                      title={page.title || chart?.title}
+                      title={label}
                     >
-                      {page.title || chart?.title || 'Chart'}
+                      {page.type === 'notes' && (
+                        <span style={{ fontSize: 10, color: '#94a3b8', marginRight: 4 }}>N</span>
+                      )}
+                      {label}
                     </span>
                     <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
                       <button
@@ -1217,14 +1867,14 @@ export default function ReportBuilder({
                           e.stopPropagation();
                           movePage(page.id, 'up');
                         }}
-                        disabled={chartIdx === 0}
+                        disabled={pageIdx === 0}
                         title="Move up"
                         style={{
                           background: 'none',
                           border: 'none',
                           padding: '2px 3px',
-                          cursor: chartIdx === 0 ? 'not-allowed' : 'pointer',
-                          color: chartIdx === 0 ? '#cbd5e1' : '#94a3b8',
+                          cursor: pageIdx === 0 ? 'not-allowed' : 'pointer',
+                          color: pageIdx === 0 ? '#cbd5e1' : '#94a3b8',
                           borderRadius: 3,
                         }}
                       >
@@ -1237,18 +1887,18 @@ export default function ReportBuilder({
                           e.stopPropagation();
                           movePage(page.id, 'down');
                         }}
-                        disabled={chartIdx === allChartPages.length - 1}
+                        disabled={pageIdx === allMovablePages.length - 1}
                         title="Move down"
                         style={{
                           background: 'none',
                           border: 'none',
                           padding: '2px 3px',
                           cursor:
-                            chartIdx === allChartPages.length - 1
+                            pageIdx === allMovablePages.length - 1
                               ? 'not-allowed'
                               : 'pointer',
                           color:
-                            chartIdx === allChartPages.length - 1
+                            pageIdx === allMovablePages.length - 1
                               ? '#cbd5e1'
                               : '#94a3b8',
                           borderRadius: 3,
@@ -1282,70 +1932,94 @@ export default function ReportBuilder({
                 );
               })}
 
-            {/* Add chart button */}
-            {availableCharts.length > 0 && (
-              <div style={{ position: 'relative', padding: '4px 16px 8px' }}>
-                <button
-                  onClick={() => setShowAddChart((v) => !v)}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '6px 10px',
-                    border: '1px dashed #cbd5e1',
-                    borderRadius: 6,
-                    backgroundColor: 'transparent',
-                    cursor: 'pointer',
-                    color: '#64748b',
-                    fontSize: 12,
-                  }}
-                >
-                  <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Add Chart
-                </button>
-
-                {showAddChart && (
-                  <div
+            {/* Add chart / Add notes buttons */}
+            <div style={{ padding: '4px 16px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {availableCharts.length > 0 && (
+                <div style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setShowAddChart((v) => !v)}
                     style={{
-                      position: 'absolute',
-                      left: 16,
-                      right: 8,
-                      top: '100%',
-                      backgroundColor: '#ffffff',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: 8,
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                      zIndex: 10,
-                      maxHeight: 200,
-                      overflowY: 'auto',
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '6px 10px',
+                      border: '1px dashed #cbd5e1',
+                      borderRadius: 6,
+                      backgroundColor: 'transparent',
+                      cursor: 'pointer',
+                      color: '#64748b',
+                      fontSize: 12,
                     }}
                   >
-                    {availableCharts.map((chart) => (
-                      <button
-                        key={chart.id}
-                        onClick={() => addChartPage(chart)}
-                        style={{
-                          display: 'block',
-                          width: '100%',
-                          textAlign: 'left',
-                          padding: '8px 12px',
-                          border: 'none',
-                          backgroundColor: 'transparent',
-                          cursor: 'pointer',
-                          fontSize: 13,
-                          color: '#334155',
-                        }}
-                      >
-                        {chart.title}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Chart
+                  </button>
+
+                  {showAddChart && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        top: '100%',
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 8,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        zIndex: 10,
+                        maxHeight: 200,
+                        overflowY: 'auto',
+                      }}
+                    >
+                      {availableCharts.map((chart) => (
+                        <button
+                          key={chart.id}
+                          onClick={() => addChartPage(chart)}
+                          style={{
+                            display: 'block',
+                            width: '100%',
+                            textAlign: 'left',
+                            padding: '8px 12px',
+                            border: 'none',
+                            backgroundColor: 'transparent',
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            color: '#334155',
+                          }}
+                        >
+                          {chart.title}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button
+                onClick={addNotesPage}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 10px',
+                  border: '1px dashed #cbd5e1',
+                  borderRadius: 6,
+                  backgroundColor: 'transparent',
+                  cursor: 'pointer',
+                  color: '#64748b',
+                  fontSize: 12,
+                }}
+              >
+                <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Notes
+              </button>
+            </div>
 
             {/* Takeaways */}
             <PageListItem
@@ -1392,7 +2066,7 @@ export default function ReportBuilder({
           </div>
         </div>
 
-        {/* Right panel — edit */}
+        {/* Right panel — edit or history */}
         <div
           style={{
             width: 280,
@@ -1402,7 +2076,7 @@ export default function ReportBuilder({
             overflowY: 'auto',
           }}
         >
-          {renderEditPanel()}
+          {rightPanelMode === 'history' ? renderHistoryPanel() : renderEditPanel()}
         </div>
       </div>
 
@@ -1439,16 +2113,34 @@ export default function ReportBuilder({
               </div>
             );
           }
+          if (page.type === 'notes') {
+            return (
+              <div key={page.id} data-report-page="">
+                <NotesPageRender
+                  page={page}
+                  accent={accent}
+                  pageNum={pageNum}
+                  totalPages={totalPages}
+                  clientName={config.coverSubtitle}
+                />
+              </div>
+            );
+          }
           if (page.type === 'chart' && page.chartId) {
             const chartConfig = activeTab.chartConfigs.find((w) => w.id === page.chartId);
             if (!chartConfig) return null;
+            const chartConfig2 = page.chartId2
+              ? activeTab.chartConfigs.find((w) => w.id === page.chartId2)
+              : undefined;
             const pageTitle = page.title || chartConfig.title;
             const chartAccent = accentForWidget(chartConfig, activeTab.chartConfigs);
             return (
               <div key={page.id} data-report-page="">
                 <ChartPageRender
                   config={config}
+                  page={page}
                   chartConfig={chartConfig}
+                  chartConfig2={chartConfig2}
                   pageTitle={pageTitle}
                   parsedData={parsedData}
                   accent={chartAccent}
