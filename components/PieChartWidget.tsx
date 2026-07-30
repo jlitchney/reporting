@@ -276,14 +276,14 @@ export default function PieChartWidget({
         ) : (
           <div className="flex items-start gap-6">
             {/* Pie */}
-            <div style={{ width: 220, height: 220 }} className="flex-shrink-0">
-              <PieChart width={220} height={220}>
+            <div style={{ width: 280, height: 280 }} className="flex-shrink-0">
+              <PieChart width={280} height={280}>
                 <Pie
                   data={activeData}
-                  cx={110}
-                  cy={110}
-                  innerRadius={52}
-                  outerRadius={90}
+                  cx={140}
+                  cy={140}
+                  innerRadius={62}
+                  outerRadius={118}
                   dataKey="count"
                   nameKey="period"
                   paddingAngle={2}
@@ -300,29 +300,29 @@ export default function PieChartWidget({
             </div>
 
             {/* Legend table */}
-            <div className="flex-1 min-w-0 pt-2">
-              <table className="w-full text-xs">
+            <div className="shrink-0 pt-2">
+              <table className="text-xs">
                 <thead>
                   <tr className="border-b border-slate-100">
-                    <th className="pb-1.5 text-left font-medium text-slate-400">Name</th>
-                    <th className="pb-1.5 text-right font-medium text-slate-400">Count</th>
+                    <th className="pb-1.5 text-left font-medium text-slate-400 pr-4">Name</th>
+                    <th className="pb-1.5 text-right font-medium text-slate-400 pr-3">Count</th>
                     <th className="pb-1.5 text-right font-medium text-slate-400">%</th>
                   </tr>
                 </thead>
                 <tbody>
                   {activeData.map((d, idx) => (
                     <tr key={d.period} className="border-b border-slate-50">
-                      <td className="py-1 pr-2">
-                        <div className="flex items-center gap-1.5 min-w-0">
+                      <td className="py-1 pr-4">
+                        <div className="flex items-center gap-1.5">
                           <span
                             className="h-2.5 w-2.5 flex-shrink-0 rounded-sm"
                             style={{ backgroundColor: sliceColor(d.period, idx) }}
                           />
-                          <span className="truncate text-slate-600">{d.period}</span>
+                          <span className="text-slate-600 max-w-[160px] truncate">{d.period}</span>
                         </div>
                       </td>
-                      <td className="py-1 text-right font-medium text-slate-700">{d.count.toLocaleString()}</td>
-                      <td className="py-1 text-right text-slate-500">
+                      <td className="py-1 pr-3 text-right font-medium text-slate-700 whitespace-nowrap">{d.count.toLocaleString()}</td>
+                      <td className="py-1 text-right text-slate-500 whitespace-nowrap">
                         {total > 0 ? `${((d.count / total) * 100).toFixed(1)}%` : '—'}
                       </td>
                     </tr>
@@ -330,8 +330,8 @@ export default function PieChartWidget({
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td className="pt-2 font-semibold text-slate-700">Total</td>
-                    <td className="pt-2 text-right font-semibold text-slate-700">{total.toLocaleString()}</td>
+                    <td className="pt-2 font-semibold text-slate-700 pr-4">Total</td>
+                    <td className="pt-2 pr-3 text-right font-semibold text-slate-700">{total.toLocaleString()}</td>
                     <td className="pt-2 text-right text-slate-500">100%</td>
                   </tr>
                 </tfoot>
