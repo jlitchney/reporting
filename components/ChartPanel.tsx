@@ -297,19 +297,20 @@ export default function ChartPanel({
                 className="rounded border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
               >
                 <option value="">+ Add filter</option>
-                {tagGroups.map((g) => {
-                  const available = g.tags.filter(
-                    (t) => t.label !== query.metric && !query.filters.includes(t.label)
-                  );
-                  if (!available.length) return null;
-                  return (
-                    <optgroup key={g.name} label={g.name}>
-                      {available.map((t) => (
-                        <option key={t.label} value={t.label}>{t.tag}</option>
-                      ))}
-                    </optgroup>
-                  );
-                })}
+                <optgroup label="— Has tag">
+                  {tagGroups.flatMap((g) =>
+                    g.tags
+                      .filter((t) => t.label !== query.metric && !query.filters.includes(t.label) && !query.filters.includes('!' + t.label))
+                      .map((t) => <option key={t.label} value={t.label}>{t.tag}</option>)
+                  )}
+                </optgroup>
+                <optgroup label="— Does NOT have tag">
+                  {tagGroups.flatMap((g) =>
+                    g.tags
+                      .filter((t) => t.label !== query.metric && !query.filters.includes(t.label) && !query.filters.includes('!' + t.label))
+                      .map((t) => <option key={'!' + t.label} value={'!' + t.label}>NOT {t.tag}</option>)
+                  )}
+                </optgroup>
               </select>
             </div>
 
@@ -353,21 +354,26 @@ export default function ChartPanel({
           {/* Active filters */}
           {query.filters.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {query.filters.map((f) => (
-                <span
-                  key={f}
-                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
-                  style={{ backgroundColor: accent }}
-                >
-                  {f}
-                  <button
-                    onClick={() => updateQuery({ filters: query.filters.filter((x) => x !== f) })}
-                    className="ml-0.5 opacity-70 hover:opacity-100"
+              {query.filters.map((f) => {
+                const negated = f.startsWith('!');
+                const label = negated ? f.slice(1) : f;
+                const tagName = tagGroups.flatMap((g) => g.tags).find((t) => t.label === label)?.tag ?? label;
+                return (
+                  <span
+                    key={f}
+                    className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
+                    style={{ backgroundColor: negated ? '#64748b' : accent }}
                   >
-                    ×
-                  </button>
-                </span>
-              ))}
+                    {negated ? <span>NOT <span className="line-through opacity-80">{tagName}</span></span> : tagName}
+                    <button
+                      onClick={() => updateQuery({ filters: query.filters.filter((x) => x !== f) })}
+                      className="ml-0.5 opacity-70 hover:opacity-100"
+                    >
+                      ×
+                    </button>
+                  </span>
+                );
+              })}
             </div>
           )}
 

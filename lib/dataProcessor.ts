@@ -18,6 +18,13 @@ import {
 import type { ParsedLead, ChartDataPoint, ChartQuery, GroupBy, DatePreset, CriteriaFilter, FilterCondition, TagGroup, CostMetricDef } from './types';
 import type { SpendEntry } from './redis';
 
+function passesFilter(lead: ParsedLead, filter: string): boolean {
+  if (filter.startsWith('!')) {
+    return !lead.tags.get(filter.slice(1))?.applied;
+  }
+  return !!lead.tags.get(filter)?.applied;
+}
+
 function testCondition(lead: ParsedLead, cond: FilterCondition): boolean {
   if (!cond.tag) return true;
   const entry = lead.tags.get(cond.tag);
@@ -126,11 +133,7 @@ export function processChartData(leads: ParsedLead[], query: ChartQuery): ChartD
     let passesFilters = true;
     for (const filter of filters) {
       if (!isAllCandidates && filter === metric) continue;
-      const filterTag = lead.tags.get(filter);
-      if (!filterTag?.applied) {
-        passesFilters = false;
-        break;
-      }
+      if (!passesFilter(lead, filter)) { passesFilters = false; break; }
     }
     if (!passesFilters) continue;
 
@@ -187,7 +190,7 @@ export function processTagGroupChart(
       if (criteria && criteria.conditions.length > 0) return evaluateCriteria(lead, criteria);
       for (const f of filters) {
         if (f === metric || f === tag.label) continue;
-        if (!lead.tags.get(f)?.applied) return false;
+        if (!passesFilter(lead, f)) return false;
       }
       return true;
     }).length;
@@ -228,7 +231,7 @@ export function processStackedBarChart(
     let passesFilters = true;
     for (const f of filters) {
       if (f === metric) continue;
-      if (!lead.tags.get(f)?.applied) { passesFilters = false; break; }
+      if (!passesFilter(lead, f)) { passesFilters = false; break; }
     }
     if (!passesFilters) continue;
 
@@ -357,7 +360,7 @@ export function countLeadsForTotal(
     if (criteria && criteria.conditions.length > 0) return evaluateCriteria(lead, criteria);
     for (const f of filters) {
       if (f === metric) continue;
-      if (!lead.tags.get(f)?.applied) return false;
+      if (!passesFilter(lead, f)) return false;
     }
     return true;
   }).length;
@@ -366,7 +369,7 @@ export function countLeadsForTotal(
 export function countLeadsWithFilters(leads: ParsedLead[], metric: string, filters: string[]): number {
   return leads.filter((lead) => {
     if (!lead.tags.get(metric)?.applied) return false;
-    return filters.every((f) => f === metric || lead.tags.get(f)?.applied != null);
+    return filters.every((f) => f === metric || passesFilter(lead, f));
   }).length;
 }
 
