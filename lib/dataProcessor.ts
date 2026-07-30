@@ -286,11 +286,15 @@ export function processFunnelChart(
   const effectiveStart = datePreset && datePreset !== 'custom' ? presetStart(datePreset) : (startDate ?? null);
   const effectiveEnd = datePreset === 'custom' ? (endDate ?? null) : null;
 
-  const labelFor = (lbl: string) =>
-    query.funnelStageLabels?.[lbl] ??
-    (lbl === '__all__' ? 'All Candidates' : null) ??
-    tagGroups.flatMap((g) => g.tags).find((t) => t.label === lbl)?.tag ??
-    lbl;
+  const allTagsList = tagGroups.flatMap((g) => g.tags);
+  const tagNameFor = (lbl: string) => allTagsList.find((t) => t.label === lbl)?.tag ?? lbl;
+
+  const labelFor = (lbl: string) => {
+    if (query.funnelStageLabels?.[lbl]) return query.funnelStageLabels[lbl];
+    if (lbl === '__all__') return 'All Candidates';
+    if (lbl.startsWith('!')) return `NOT ${tagNameFor(lbl.slice(1))}`;
+    return tagNameFor(lbl);
+  };
 
   // Each stage counts leads that pass ALL stages up to and including this one (cumulative funnel)
   return funnelStages.map((tagLabel, idx) => {
@@ -303,9 +307,13 @@ export function processFunnelChart(
       }
       for (const stage of stagesUpToHere) {
         if (stage === '__all__') continue;
-        const tagEntry = lead.tags.get(stage);
-        if (!tagEntry?.applied) return false;
-        if (excludeRemoved && tagEntry.removed != null) return false;
+        if (stage.startsWith('!')) {
+          if (lead.tags.get(stage.slice(1))?.applied) return false;
+        } else {
+          const tagEntry = lead.tags.get(stage);
+          if (!tagEntry?.applied) return false;
+          if (excludeRemoved && tagEntry.removed != null) return false;
+        }
       }
       return true;
     }).length;

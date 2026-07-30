@@ -46,7 +46,9 @@ export default function FunnelWidget({ data, config, accent, onUpdate, onRemove,
         {funnelStages.length > 0 && (
           <div className="mb-2 space-y-1">
             {funnelStages.map((tagLabel, idx) => {
-              const tagName = tagLabel === '__all__' ? 'All Candidates' : (allTags.find((t) => t.label === tagLabel)?.tag ?? tagLabel);
+              const isNot = tagLabel.startsWith('!');
+              const baseLabel = isNot ? tagLabel.slice(1) : tagLabel;
+              const tagName = tagLabel === '__all__' ? 'All Candidates' : (isNot ? `NOT ${allTags.find((t) => t.label === baseLabel)?.tag ?? baseLabel}` : (allTags.find((t) => t.label === tagLabel)?.tag ?? tagLabel));
               const customLabel = query.funnelStageLabels?.[tagLabel] ?? '';
               return (
                 <div key={tagLabel} className="flex items-center gap-2 rounded border border-slate-200 bg-white px-2.5 py-1.5">
@@ -79,15 +81,16 @@ export default function FunnelWidget({ data, config, accent, onUpdate, onRemove,
         >
           <option value="">+ Add stage…</option>
           {!funnelStages.includes('__all__') && <option value="__all__">All Candidates</option>}
-          {tagGroups.map((g) => {
-            const available = g.tags.filter((t) => !funnelStages.includes(t.label));
-            if (!available.length) return null;
-            return (
-              <optgroup key={g.name} label={g.name}>
-                {available.map((t) => <option key={t.label} value={t.label}>{t.tag}</option>)}
-              </optgroup>
-            );
-          })}
+          <optgroup label="— Has tag">
+            {tagGroups.flatMap((g) => g.tags.filter((t) => !funnelStages.includes(t.label) && !funnelStages.includes('!' + t.label)).map((t) => (
+              <option key={t.label} value={t.label}>{t.tag}</option>
+            )))}
+          </optgroup>
+          <optgroup label="— Does NOT have tag">
+            {tagGroups.flatMap((g) => g.tags.filter((t) => !funnelStages.includes(t.label) && !funnelStages.includes('!' + t.label)).map((t) => (
+              <option key={'!' + t.label} value={'!' + t.label}>NOT {t.tag}</option>
+            )))}
+          </optgroup>
         </select>
       </div>
 
