@@ -6,7 +6,7 @@ import { countLeadsForTotal, DATE_PRESET_LABELS } from '@/lib/dataProcessor';
 import CriteriaBuilder from './CriteriaBuilder';
 import AppearanceControls from './AppearanceControls';
 
-const PRESETS: DatePreset[] = ['all_time', 'this_year', 'this_month', 'last_30_days', 'last_90_days', 'custom'];
+const PRESETS: DatePreset[] = ['all_time', 'this_year', 'this_month', 'last_30_days', 'last_90_days', 'today', 'custom'];
 
 function GripIcon() {
   return (

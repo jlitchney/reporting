@@ -11,6 +11,8 @@ import {
   isBefore,
   isAfter,
   startOfYear,
+  startOfDay,
+  endOfDay,
   subDays,
   differenceInDays,
   parseISO,
@@ -108,7 +110,7 @@ export function processChartData(leads: ParsedLead[], query: ChartQuery): ChartD
 
   const isAllCandidates = metric === '__all__';
   const effectiveStart = datePreset && datePreset !== 'custom' ? presetStart(datePreset) : (startDate ?? null);
-  const effectiveEnd = datePreset === 'custom' ? (endDate ?? null) : null;
+  const effectiveEnd = datePreset === 'custom' ? (endDate ?? null) : presetEnd(datePreset ?? 'all_time');
 
   const counts = new Map<number, number>();
 
@@ -172,7 +174,7 @@ export function processTagGroupChart(
   if (!group) return [];
 
   const effectiveStart = datePreset && datePreset !== 'custom' ? presetStart(datePreset) : (startDate ?? null);
-  const effectiveEnd = datePreset === 'custom' ? (endDate ?? null) : null;
+  const effectiveEnd = datePreset === 'custom' ? (endDate ?? null) : presetEnd(datePreset ?? 'all_time');
 
   return group.tags.map((tag) => {
     const count = leads.filter((lead) => {
@@ -211,7 +213,7 @@ export function processStackedBarChart(
 
   const { metric, filters, dateField, groupBy, datePreset, startDate, endDate, excludeRemoved } = query;
   const effectiveStart = datePreset && datePreset !== 'custom' ? presetStart(datePreset) : (startDate ?? null);
-  const effectiveEnd = datePreset === 'custom' ? (endDate ?? null) : null;
+  const effectiveEnd = datePreset === 'custom' ? (endDate ?? null) : presetEnd(datePreset ?? 'all_time');
 
   const periodData = new Map<number, Map<string, number>>();
 
@@ -284,7 +286,7 @@ export function processFunnelChart(
   if (!funnelStages.length) return [];
   const { datePreset, startDate, endDate, excludeRemoved } = query;
   const effectiveStart = datePreset && datePreset !== 'custom' ? presetStart(datePreset) : (startDate ?? null);
-  const effectiveEnd = datePreset === 'custom' ? (endDate ?? null) : null;
+  const effectiveEnd = datePreset === 'custom' ? (endDate ?? null) : presetEnd(datePreset ?? 'all_time');
 
   const allTagsList = tagGroups.flatMap((g) => g.tags);
   const tagNameFor = (lbl: string) => allTagsList.find((t) => t.label === lbl)?.tag ?? lbl;
@@ -331,6 +333,7 @@ export const DATE_PRESET_LABELS: Record<DatePreset, string> = {
   this_month: 'This Month',
   last_30_days: 'Last 30 Days',
   last_90_days: 'Last 90 Days',
+  today: 'Today',
   custom: 'Custom Range',
 };
 
@@ -342,8 +345,14 @@ function presetStart(preset: DatePreset): Date | null {
     case 'this_month': return startOfMonth(now);
     case 'last_30_days': return subDays(now, 30);
     case 'last_90_days': return subDays(now, 90);
+    case 'today': return startOfDay(now);
     case 'custom': return null;
   }
+}
+
+function presetEnd(preset: DatePreset): Date | null {
+  if (preset === 'today') return endOfDay(new Date());
+  return null;
 }
 
 export function countLeadsForTotal(
@@ -356,7 +365,7 @@ export function countLeadsForTotal(
   criteria?: CriteriaFilter
 ): number {
   const start = preset === 'custom' ? (customStart ?? null) : presetStart(preset);
-  const end = preset === 'custom' ? (customEnd ?? null) : null;
+  const end = preset === 'custom' ? (customEnd ?? null) : presetEnd(preset);
   return leads.filter((lead) => {
     const date = metric ? lead.tags.get(metric)?.applied ?? null : lead.createdDate;
     if (metric && !lead.tags.get(metric)?.applied) return false;
@@ -451,7 +460,7 @@ export function computeCostMetrics(
   const effectiveStart = query.datePreset && query.datePreset !== 'custom'
     ? resolvePreset(query.datePreset)
     : (query.startDate ?? null);
-  const effectiveEnd = query.datePreset === 'custom' ? (query.endDate ?? null) : null;
+  const effectiveEnd = query.datePreset === 'custom' ? (query.endDate ?? null) : presetEnd(query.datePreset ?? 'all_time');
 
   // Each metric has its own dateField; falls back to query.dateField then 'created'
   const resolveMetricDateField = (def: CostMetricDef) =>

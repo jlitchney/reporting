@@ -66,7 +66,7 @@ export interface CostMetricDef {
   color?: string;
 }
 
-export type DatePreset = 'all_time' | 'this_year' | 'this_month' | 'last_30_days' | 'last_90_days' | 'custom';
+export type DatePreset = 'all_time' | 'this_year' | 'this_month' | 'last_30_days' | 'last_90_days' | 'today' | 'custom';
 
 export interface ChartQuery {
   metric: string | null;
