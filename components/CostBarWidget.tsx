@@ -17,7 +17,7 @@ import { computeCostMetrics, DATE_PRESET_LABELS } from '@/lib/dataProcessor';
 import type { ParsedData, ChartConfig, ChartQuery, DatePreset, CostMetricDef } from '@/lib/types';
 import type { SpendEntry } from '@/lib/redis';
 
-const DATE_PRESETS: DatePreset[] = ['all_time', 'this_year', 'this_month', 'last_30_days', 'last_90_days'];
+const DATE_PRESETS: DatePreset[] = ['today', 'this_month', 'last_30_days', 'last_90_days', 'this_year', 'all_time'];
 
 // Colors for additional metrics beyond the first (which uses accent)
 const EXTRA_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];

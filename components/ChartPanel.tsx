@@ -24,7 +24,7 @@ const GROUP_OPTIONS: { label: string; value: GroupBy }[] = [
   { label: 'Quarter', value: 'quarter' },
 ];
 
-const DATE_PRESETS: DatePreset[] = ['all_time', 'this_year', 'this_month', 'last_30_days', 'last_90_days', 'custom'];
+const DATE_PRESETS: DatePreset[] = ['today', 'this_month', 'last_30_days', 'last_90_days', 'this_year', 'all_time', 'custom'];
 
 export default function ChartPanel({
   data,

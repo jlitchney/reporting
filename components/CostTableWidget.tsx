@@ -20,7 +20,7 @@ interface Props {
   readOnly?: boolean;
 }
 
-const DATE_PRESETS: DatePreset[] = ['all_time', 'this_year', 'this_month', 'last_30_days', 'last_90_days'];
+const DATE_PRESETS: DatePreset[] = ['today', 'this_month', 'last_30_days', 'last_90_days', 'this_year', 'all_time'];
 
 function fmt(n: number) {
   return '$' + n.toFixed(2);

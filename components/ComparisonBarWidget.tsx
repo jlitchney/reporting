@@ -6,7 +6,7 @@ import WidgetShell from './WidgetShell';
 import { DATE_PRESET_LABELS } from '@/lib/dataProcessor';
 import type { ParsedData, ChartConfig, ChartQuery, DatePreset, ComparisonSeries } from '@/lib/types';
 
-const DATE_PRESETS: DatePreset[] = ['all_time', 'this_year', 'this_month', 'last_30_days', 'last_90_days'];
+const DATE_PRESETS: DatePreset[] = ['today', 'this_month', 'last_30_days', 'last_90_days', 'this_year', 'all_time'];
 const FALLBACK_COLORS = ['#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#3b82f6'];
 
 function presetStart(preset: DatePreset): Date | null {
