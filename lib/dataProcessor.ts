@@ -70,8 +70,13 @@ function getPeriodStart(date: Date, groupBy: GroupBy): Date {
 
 function formatPeriod(date: Date, groupBy: GroupBy): string {
   switch (groupBy) {
-    case 'week':
-      return format(date, 'M/d/yy');
+    case 'week': {
+      const sunday = addDays(date, 6);
+      if (date.getMonth() === sunday.getMonth()) {
+        return `${format(date, 'MMM d')}-${format(sunday, 'd')}`;
+      }
+      return `${format(date, 'MMM d')}-${format(sunday, 'MMM d')}`;
+    }
     case 'month':
       return format(date, "MMM ''yy");
     case 'quarter': {
@@ -567,7 +572,7 @@ export function computeCostMetrics(
 
     rows.push({
       weekOf: week,
-      weekLabel: format(week, 'M/d/yy'),
+      weekLabel: (() => { const sun = addDays(week, 6); return week.getMonth() === sun.getMonth() ? `${format(week, 'MMM d')}-${format(sun, 'd')}` : `${format(week, 'MMM d')}-${format(sun, 'MMM d')}`; })(),
       sources,
       organicCounts,
       totals: { spend: totalSpend, counts: totalCounts, costPer: totalCostPer },
