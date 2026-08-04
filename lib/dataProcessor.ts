@@ -59,6 +59,8 @@ export function evaluateCriteria(lead: ParsedLead, criteria: CriteriaFilter): bo
 
 function getPeriodStart(date: Date, groupBy: GroupBy): Date {
   switch (groupBy) {
+    case 'day':
+      return startOfDay(date);
     case 'week':
       return startOfWeek(date, { weekStartsOn: 1 });
     case 'month':
@@ -70,6 +72,8 @@ function getPeriodStart(date: Date, groupBy: GroupBy): Date {
 
 function formatPeriod(date: Date, groupBy: GroupBy): string {
   switch (groupBy) {
+    case 'day':
+      return format(date, 'MMM d');
     case 'week': {
       const sunday = addDays(date, 6);
       if (date.getMonth() === sunday.getMonth()) {
@@ -88,6 +92,8 @@ function formatPeriod(date: Date, groupBy: GroupBy): string {
 
 function nextPeriod(date: Date, groupBy: GroupBy): Date {
   switch (groupBy) {
+    case 'day':
+      return addDays(date, 1);
     case 'week':
       return addWeeks(date, 1);
     case 'month':

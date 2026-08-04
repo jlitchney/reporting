@@ -7,7 +7,7 @@ import CriteriaBuilder from './CriteriaBuilder';
 
 const DATE_PRESETS: DatePreset[] = ['today', 'this_month', 'last_30_days', 'last_90_days', 'this_year', 'all_time', 'custom'];
 const GROUP_OPTIONS: { label: string; value: GroupBy }[] = [
-  { label: 'Week', value: 'week' },
+  { label: 'Day', value: 'day' }, { label: 'Week', value: 'week' },
   { label: 'Month', value: 'month' },
   { label: 'Quarter', value: 'quarter' },
 ];

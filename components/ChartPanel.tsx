@@ -19,7 +19,7 @@ interface ChartPanelProps {
 }
 
 const GROUP_OPTIONS: { label: string; value: GroupBy }[] = [
-  { label: 'Week', value: 'week' },
+  { label: 'Day', value: 'day' }, { label: 'Week', value: 'week' },
   { label: 'Month', value: 'month' },
   { label: 'Quarter', value: 'quarter' },
 ];

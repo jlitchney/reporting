@@ -34,7 +34,7 @@ export interface ChartDataPoint {
   periodStart?: Date;
 }
 
-export type GroupBy = 'week' | 'month' | 'quarter';
+export type GroupBy = 'day' | 'week' | 'month' | 'quarter';
 
 export type FilterOperator = 'currently_applied' | 'ever_applied' | 'removed' | 'never_applied';
 export type FilterLogicOp = 'AND' | 'OR';
