@@ -15,6 +15,7 @@ import FunnelWidget from '@/components/FunnelWidget';
 import SpendManager from '@/components/SpendManager';
 import CostTableWidget from '@/components/CostTableWidget';
 import CostBarWidget from '@/components/CostBarWidget';
+import CostTotalWidget from '@/components/CostTotalWidget';
 import ComparisonBarWidget from '@/components/ComparisonBarWidget';
 import ReportBuilder from '@/components/ReportBuilder';
 import { useClients } from '@/lib/useClients';
@@ -332,6 +333,7 @@ export default function Home() {
                       case 'funnel':      widget = <FunnelWidget {...commonProps} />; break;
                       case 'cost':        widget = <CostTableWidget {...commonProps} spendData={activeClient?.spendData ?? []} />; break;
                       case 'cost_bar':        widget = <CostBarWidget {...commonProps} spendData={activeClient?.spendData ?? []} />; break;
+                      case 'cost_total':      widget = <CostTotalWidget {...commonProps} spendData={activeClient?.spendData ?? []} />; break;
                       case 'comparison_bar': widget = <ComparisonBarWidget {...commonProps} />; break;
                       default:               widget = <ChartPanel {...commonProps} />;
                     }
