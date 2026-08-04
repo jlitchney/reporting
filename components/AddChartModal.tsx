@@ -23,6 +23,7 @@ const TYPE_META: { type: WidgetType; label: string; description: string; icon: R
   { type: 'funnel', label: 'Candidate Funnel', description: 'Stage-by-stage conversion', icon: <FunnelIcon /> },
   { type: 'cost', label: 'Cost Table', description: 'Spend + cost/app by source', icon: <CostIcon /> },
   { type: 'cost_bar', label: 'Cost Bar Chart', description: '$/candidate or $/app by week', icon: <CostBarIcon /> },
+  { type: 'cost_total', label: 'Cost Total', description: 'Total spend or $/candidate KPI', icon: <CostTotalIcon /> },
   { type: 'comparison_bar', label: 'Comparison Bars', description: 'Applied vs Not Applied by tag', icon: <ComparisonBarIcon /> },
 ];
 
@@ -37,6 +38,7 @@ const TYPE_STEP_LABEL: Record<WidgetType, string> = {
   funnel: 'Add Candidate Funnel',
   cost: 'Add Cost Table',
   cost_bar: 'Add Cost Bar Chart',
+  cost_total: 'Add Cost Total',
   comparison_bar: 'Add Comparison Bars',
 };
 
@@ -58,6 +60,7 @@ function autoTitle(type: WidgetType, metric: string | null, data: ParsedData, ta
   if (type === 'funnel') return 'Candidate Funnel';
   if (type === 'cost') return 'Cost by Source';
   if (type === 'cost_bar') return 'Cost per Week';
+  if (type === 'cost_total') return 'Total Spend';
   if (type === 'comparison_bar') return tagGroupAxis ? `${tagGroupAxis} — Applied vs Not Applied` : 'Comparison Bars';
   // bar
   if (tagGroupAxis) return tagName ? `${tagName} by ${tagGroupAxis}` : `Candidates by ${tagGroupAxis}`;
@@ -128,7 +131,8 @@ export default function AddChartModal({ data, onAdd, onClose }: AddChartModalPro
         endDate,
         datePreset,
         funnelStages: type === 'funnel' ? funnelStages : undefined,
-        costMetricDefs: type === 'cost_bar' ? [{ tagLabel: '', name: 'All Candidates' }] : undefined,
+        costMetricDefs: (type === 'cost_bar' || type === 'cost_total') ? [{ tagLabel: '', name: 'All Candidates' }] : undefined,
+        costSelectedMetric: type === 'cost_total' ? '__spend__' : undefined,
         comparisonSeries: type === 'comparison_bar'
           ? [{ id: 'default', label: 'Total', tagLabel: '' }]
           : undefined,
@@ -399,6 +403,9 @@ function CostIcon() {
 }
 function CostBarIcon() {
   return <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h18" /></svg>;
+}
+function CostTotalIcon() {
+  return <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><text x="12" y="13" textAnchor="middle" fontSize="6" fontWeight="bold" fill="currentColor" stroke="none">1</text></svg>;
 }
 function ComparisonBarIcon() {
   return (

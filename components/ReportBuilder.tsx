@@ -16,6 +16,7 @@ import TableWidget from '@/components/TableWidget';
 import FunnelWidget from '@/components/FunnelWidget';
 import CostTableWidget from '@/components/CostTableWidget';
 import CostBarWidget from '@/components/CostBarWidget';
+import CostTotalWidget from '@/components/CostTotalWidget';
 import ComparisonBarWidget from '@/components/ComparisonBarWidget';
 
 // ---------------------------------------------------------------------------
@@ -109,6 +110,7 @@ function renderWidget(
     case 'funnel':        return <FunnelWidget {...commonProps} />;
     case 'cost_bar':      return <CostBarWidget {...commonProps} spendData={spendData} />;
     case 'cost':          return <CostTableWidget {...commonProps} spendData={spendData} />;
+    case 'cost_total':    return <CostTotalWidget {...commonProps} spendData={spendData} />;
     case 'comparison_bar':return <ComparisonBarWidget {...commonProps} />;
     default:              return <ChartPanel {...commonProps} />;
   }

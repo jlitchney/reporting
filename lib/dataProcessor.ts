@@ -577,6 +577,34 @@ export function computeCostMetrics(
   return rows.sort((a, b) => a.weekOf.getTime() - b.weekOf.getTime());
 }
 
+export interface CostTotals {
+  totalSpend: number;
+  counts: Record<string, number>;   // metric name → count
+  costPer: Record<string, number | null>; // metric name → $/count
+}
+
+export function computeCostTotals(
+  leads: ParsedLead[],
+  spendData: SpendEntry[],
+  tagGroups: TagGroup[],
+  sourceGroupName: string,
+  metricDefs: CostMetricDef[],
+  query: Pick<ChartQuery, 'datePreset' | 'startDate' | 'endDate' | 'excludeRemoved' | 'dateField' | 'costSourceFilters'>
+): CostTotals {
+  const rows = computeCostMetrics(leads, spendData, tagGroups, sourceGroupName, metricDefs, query);
+  const totalSpend = rows.reduce((s, r) => s + r.totals.spend, 0);
+  const counts: Record<string, number> = {};
+  for (const def of metricDefs) {
+    counts[def.name] = rows.reduce((s, r) => s + (r.totals.counts[def.name] ?? 0), 0);
+  }
+  const costPer: Record<string, number | null> = {};
+  for (const def of metricDefs) {
+    const c = counts[def.name];
+    costPer[def.name] = totalSpend > 0 && c > 0 ? totalSpend / c : null;
+  }
+  return { totalSpend, counts, costPer };
+}
+
 export function processCostBarData(
   leads: ParsedLead[],
   spendData: SpendEntry[],
