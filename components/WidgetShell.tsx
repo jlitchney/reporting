@@ -22,6 +22,7 @@ interface WidgetShellProps {
   onHeightChange?: (h: number) => void;
   showInReport?: boolean;
   onShowInReportChange?: (v: boolean) => void;
+  headerExtra?: ReactNode;
 }
 
 export default function WidgetShell({
@@ -43,6 +44,7 @@ export default function WidgetShell({
   onHeightChange,
   showInReport,
   onShowInReportChange,
+  headerExtra,
 }: WidgetShellProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
@@ -131,6 +133,7 @@ export default function WidgetShell({
               <EyeOffIcon />
             </span>
           )}
+          {headerExtra}
           {onDuplicate && !readOnly && (
             <button
               onClick={onDuplicate}

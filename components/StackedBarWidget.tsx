@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import {
   BarChart,
   Bar,
@@ -54,6 +54,7 @@ interface Props {
 export default function StackedBarWidget({ data, config, accent, onUpdate, onRemove, canRemove, showDragHandle, onDuplicate, readOnly }: Props) {
   const { tagGroups, leads } = data;
   const { id, title, query } = config;
+  const [copied, setCopied] = useState(false);
 
   const updateQuery = (patch: Partial<ChartQuery>) => onUpdate(id, { query: { ...query, ...patch } });
 
@@ -78,6 +79,44 @@ export default function StackedBarWidget({ data, config, accent, onUpdate, onRem
 
   const seriesColor = (tagLabel: string, idx: number) =>
     config.seriesColors?.[tagLabel] ?? STACK_COLORS[idx % STACK_COLORS.length];
+
+  const handleCopy = useCallback(() => {
+    if (!stackGroup || chartData.length === 0) return;
+    const tags = stackGroup.tags;
+    const header = ['', ...tags.map((t) => t.tag)].join('\t');
+    const rows = chartData.map((d) => {
+      // Use Sunday (end of week) as the label when groupBy is week
+      let rowLabel = d.period as string;
+      if ((query.groupBy ?? 'week') === 'week' && d.periodStart) {
+        const sunday = new Date(d.periodStart);
+        sunday.setDate(sunday.getDate() + 6);
+        rowLabel = sunday.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+      }
+      const cells = tags.map((t) => {
+        const v = d[t.label];
+        return v != null && v !== 0 ? String(v) : '';
+      });
+      return [rowLabel, ...cells].join('\t');
+    });
+    const tsv = [header, ...rows].join('\n');
+    navigator.clipboard.writeText(tsv).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [chartData, stackGroup, query.groupBy]);
+
+  const copyButton = !readOnly ? (
+    <button
+      onClick={handleCopy}
+      title="Copy data as table"
+      className="rounded p-1 transition-colors text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+    >
+      {copied
+        ? <svg className="h-3.5 w-3.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+        : <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+      }
+    </button>
+  ) : null;
 
   const configPanel = (
     <div className="flex flex-wrap items-end gap-3">
@@ -190,6 +229,7 @@ export default function StackedBarWidget({ data, config, accent, onUpdate, onRem
       showInReport={config.showInReport}
       onShowInReportChange={(v) => onUpdate(id, { showInReport: v })}
       configPanel={configPanel}
+      headerExtra={copyButton}
     >
       <div className="px-4 pb-4 pt-2">
         {chartData.length === 0 ? (
