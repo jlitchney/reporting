@@ -150,8 +150,8 @@ export default function Home() {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const widgets = activeTab?.chartConfigs ?? [];
-  const totalWidgets = widgets.filter((w) => (w.type ?? 'bar') === 'total');
-  const nonTotalWidgets = widgets.filter((w) => (w.type ?? 'bar') !== 'total');
+  const totalWidgets = widgets.filter((w) => (w.type ?? 'bar') === 'total' || w.type === 'cost_total');
+  const nonTotalWidgets = widgets.filter((w) => (w.type ?? 'bar') !== 'total' && w.type !== 'cost_total');
 
   const accentFor = (id: string) => {
     const w = widgets.find((w) => w.id === id);
@@ -295,15 +295,28 @@ export default function Home() {
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                   {totalWidgets.map((w) => (
                     <div key={w.id} {...draggableProps(w.id)} className={dragClass(w.id)}>
-                      <TotalWidget
-                        data={parsedData}
-                        config={w}
-                        accent={accentFor(w.id)}
-                        onUpdate={handleUpdateChart}
-                        onRemove={handleRemoveChart}
-                        onDuplicate={handleDuplicateChart}
-                        showDragHandle
-                      />
+                      {w.type === 'cost_total' ? (
+                        <CostTotalWidget
+                          data={parsedData}
+                          config={w}
+                          spendData={activeClient?.spendData ?? []}
+                          accent={accentFor(w.id)}
+                          onUpdate={handleUpdateChart}
+                          onRemove={handleRemoveChart}
+                          onDuplicate={handleDuplicateChart}
+                          showDragHandle
+                        />
+                      ) : (
+                        <TotalWidget
+                          data={parsedData}
+                          config={w}
+                          accent={accentFor(w.id)}
+                          onUpdate={handleUpdateChart}
+                          onRemove={handleRemoveChart}
+                          onDuplicate={handleDuplicateChart}
+                          showDragHandle
+                        />
+                      )}
                     </div>
                   ))}
                 </div>
