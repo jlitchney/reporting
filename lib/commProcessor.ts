@@ -1,12 +1,11 @@
 import { format, startOfWeek, startOfMonth, isWithinInterval, addWeeks, addMonths } from 'date-fns';
 import type { MockCandidate, MockMessage } from './mockData';
-import { filterCandidatesByTag } from './mockData';
+import { filterCandidatesByMultiTag } from './mockData';
 
 export interface CommFilters {
   startDate: Date | null;
   endDate: Date | null;
-  tagGroup: string | null;
-  tag: string | null;
+  tagFilters: Record<string, string[]>; // group -> selected tags; OR within group, AND across
   campaign: string | null; // null = all, 'individual' = no campaign
   type: 'all' | 'email' | 'sms';
   direction: 'all' | 'outbound' | 'inbound';
@@ -48,7 +47,7 @@ export function filterMessages(
   allMessages: MockMessage[],
   filters: CommFilters
 ): MockMessage[] {
-  const filteredCandidates = filterCandidatesByTag(allCandidates, filters.tagGroup, filters.tag);
+  const filteredCandidates = filterCandidatesByMultiTag(allCandidates, filters.tagFilters);
   const candidateIdSet = new Set(filteredCandidates.map((c) => c.id));
 
   return allMessages.filter((msg) => {

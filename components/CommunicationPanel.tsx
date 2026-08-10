@@ -6,7 +6,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { subMonths } from 'date-fns';
-import { MOCK_CANDIDATES, MOCK_MESSAGES, getMockTagGroups } from '@/lib/mockData';
+import { MOCK_CANDIDATES, MOCK_MESSAGES, getMockTagGroups, filterCandidatesByMultiTag } from '@/lib/mockData';
 import {
   filterMessages,
   computeCommMetrics,
@@ -107,18 +107,22 @@ export default function CommunicationPanel() {
   const [datePreset, setDatePreset] = useState<DatePreset>('all');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
-  const [tagGroup, setTagGroup] = useState<string>('');
-  const [tag, setTag] = useState<string>('');
+  const [tagFilters, setTagFilters] = useState<Record<string, string[]>>({});
   const [campaign, setCampaign] = useState<string>('__all__');
   const [type, setType] = useState<'all' | 'email' | 'sms'>('all');
   const [direction, setDirection] = useState<'all' | 'outbound' | 'inbound'>('all');
   const [groupBy, setGroupBy] = useState<'week' | 'month'>('month');
 
-  // Compute available tags for selected group
-  const availableTags = useMemo(() => {
-    if (!tagGroup) return [];
-    return tagGroups.find((g) => g.name === tagGroup)?.tags ?? [];
-  }, [tagGroup, tagGroups]);
+  const toggleTag = (group: string, tag: string) => {
+    setTagFilters((prev) => {
+      const current = prev[group] ?? [];
+      const next = current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag];
+      return { ...prev, [group]: next };
+    });
+  };
+  const isTagSelected = (group: string, tag: string) => (tagFilters[group] ?? []).includes(tag);
+  const hasAnyTagFilter = Object.values(tagFilters).some((t) => t.length > 0);
+  const clearTagFilters = () => setTagFilters({});
 
   // Build filters
   const filters = useMemo((): CommFilters => {
@@ -140,14 +144,13 @@ export default function CommunicationPanel() {
     return {
       startDate,
       endDate,
-      tagGroup: tagGroup || null,
-      tag: tag || null,
+      tagFilters,
       campaign: campaignFilter,
       type,
       direction,
       groupBy,
     };
-  }, [datePreset, customStart, customEnd, tagGroup, tag, campaign, type, direction, groupBy]);
+  }, [datePreset, customStart, customEnd, tagFilters, campaign, type, direction, groupBy]);
 
   // Filtered messages
   const filteredMessages = useMemo(
@@ -156,17 +159,10 @@ export default function CommunicationPanel() {
   );
 
   // Candidate IDs of filtered candidates
-  const filteredCandidateIds = useMemo(() => {
-    const { tagGroup: tg, tag: t } = filters;
-    const cands = tg || t
-      ? MOCK_CANDIDATES.filter((c) => {
-          if (tg && t) return c.tags.includes(`${tg} > ${t}`);
-          if (tg) return c.tags.some((tag) => tag.startsWith(`${tg} > `));
-          return true;
-        })
-      : MOCK_CANDIDATES;
-    return new Set(cands.map((c) => c.id));
-  }, [filters]);
+  const filteredCandidateIds = useMemo(
+    () => new Set(filterCandidatesByMultiTag(MOCK_CANDIDATES, filters.tagFilters).map((c) => c.id)),
+    [filters.tagFilters]
+  );
 
   // Metrics
   const metrics = useMemo(
@@ -249,26 +245,6 @@ export default function CommunicationPanel() {
           )}
 
           <FilterSelect
-            label="Tag Group"
-            value={tagGroup}
-            onChange={(v) => { setTagGroup(v); setTag(''); }}
-            options={[
-              { value: '', label: 'All Groups' },
-              ...tagGroups.map((g) => ({ value: g.name, label: g.name })),
-            ]}
-          />
-
-          <FilterSelect
-            label="Tag"
-            value={tag}
-            onChange={setTag}
-            options={[
-              { value: '', label: tagGroup ? 'All Tags' : 'Select group first' },
-              ...availableTags.map((t) => ({ value: t, label: t })),
-            ]}
-          />
-
-          <FilterSelect
             label="Campaign"
             value={campaign}
             onChange={setCampaign}
@@ -319,6 +295,41 @@ export default function CommunicationPanel() {
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Multi-select tag filters */}
+        <div className="mt-4 border-t border-slate-100 pt-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Filter by Tags
+              <span className="ml-1 font-normal normal-case text-slate-300">(OR within group · AND across groups)</span>
+            </p>
+            {hasAnyTagFilter && (
+              <button onClick={clearTagFilters} className="text-xs text-slate-400 hover:text-slate-600 underline">
+                Clear all
+              </button>
+            )}
+          </div>
+          {tagGroups.map((group) => (
+            <div key={group.name} className="flex items-start gap-3">
+              <span className="w-20 flex-shrink-0 pt-1 text-xs font-semibold text-slate-500">{group.name}</span>
+              <div className="flex flex-wrap gap-1.5">
+                {group.tags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => toggleTag(group.name, tag)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      isTagSelected(group.name, tag)
+                        ? 'bg-[#1e3a6e] text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
