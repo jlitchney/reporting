@@ -12,6 +12,7 @@ import {
   computeCommMetrics,
   buildTimeSeries,
   buildCampaignStats,
+  buildUserStats,
   getCampaigns,
   type CommFilters,
 } from '@/lib/commProcessor';
@@ -182,6 +183,12 @@ export default function CommunicationPanel() {
   // Campaign stats
   const campaignStats = useMemo(
     () => buildCampaignStats(filteredMessages),
+    [filteredMessages]
+  );
+
+  // User stats (individual outbound only)
+  const userStats = useMemo(
+    () => buildUserStats(filteredMessages),
     [filteredMessages]
   );
 
@@ -424,6 +431,69 @@ export default function CommunicationPanel() {
               </div>
             </div>
           </div>
+
+          {/* User Activity */}
+          {userStats.length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="border-b border-slate-200 px-5 py-4">
+                <h3 className="text-sm font-semibold text-slate-700">User Activity</h3>
+                <p className="mt-0.5 text-xs text-slate-400">Individual outbound messages sent by each user (excludes campaigns)</p>
+              </div>
+              <div className="grid grid-cols-2 divide-x divide-slate-100">
+                {/* Bar chart */}
+                <div className="p-5">
+                  <ResponsiveContainer width="100%" height={Math.max(120, userStats.length * 44)}>
+                    <BarChart
+                      data={userStats}
+                      layout="vertical"
+                      margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                      <XAxis type="number" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+                      <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: '#475569' }} tickLine={false} axisLine={false} width={120} />
+                      <Tooltip
+                        contentStyle={{ border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: 12 }}
+                        formatter={(value, name) => [value, name === 'email' ? 'Email' : name === 'sms' ? 'SMS' : name]}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Bar dataKey="email" name="Email" stackId="a" fill={COLORS.navy} radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="sms" name="SMS" stackId="a" fill={COLORS.blue} radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                {/* Stats table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50">
+                        <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">User</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Sent</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Email</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">SMS</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Open Rate</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Reply Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {userStats.map((row, i) => (
+                        <tr
+                          key={row.name}
+                          className={`border-b border-slate-100 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-slate-50 transition-colors`}
+                        >
+                          <td className="px-5 py-3 font-medium text-slate-700">{row.name}</td>
+                          <td className="px-4 py-3 text-right text-slate-600">{row.sent}</td>
+                          <td className="px-4 py-3 text-right text-slate-600">{row.email}</td>
+                          <td className="px-4 py-3 text-right text-slate-600">{row.sms}</td>
+                          <td className="px-4 py-3 text-right font-medium text-slate-700">{row.openRate}</td>
+                          <td className="px-4 py-3 text-right font-medium text-slate-700">{row.replyRate}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Campaign performance table */}
           {campaignStats.length > 0 && (

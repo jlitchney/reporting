@@ -198,3 +198,39 @@ export function getCampaigns(messages: MockMessage[]): string[] {
   }
   return Array.from(set).sort();
 }
+
+export interface UserStat {
+  name: string;
+  sent: number;
+  email: number;
+  sms: number;
+  openRate: string;
+  replyRate: string;
+}
+
+export function buildUserStats(messages: MockMessage[]): UserStat[] {
+  const map = new Map<string, MockMessage[]>();
+  for (const m of messages) {
+    if (m.direction !== 'outbound' || !m.sentBy) continue;
+    if (!map.has(m.sentBy)) map.set(m.sentBy, []);
+    map.get(m.sentBy)!.push(m);
+  }
+
+  return Array.from(map.entries())
+    .map(([name, msgs]) => {
+      const emailMsgs = msgs.filter((m) => m.type === 'email');
+      const smsMsgs   = msgs.filter((m) => m.type === 'sms');
+      const opened    = emailMsgs.filter((m) => m.status === 'opened' || m.status === 'replied').length;
+      const replied   = emailMsgs.filter((m) => m.status === 'replied').length;
+      const pct = (n: number, d: number) => d > 0 ? `${(n / d * 100).toFixed(1)}%` : '—';
+      return {
+        name,
+        sent: msgs.length,
+        email: emailMsgs.length,
+        sms: smsMsgs.length,
+        openRate: pct(opened, emailMsgs.length),
+        replyRate: pct(replied, emailMsgs.length),
+      };
+    })
+    .sort((a, b) => b.sent - a.sent);
+}
