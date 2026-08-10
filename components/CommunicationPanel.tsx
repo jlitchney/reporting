@@ -525,14 +525,16 @@ export default function CommunicationPanel() {
             <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
               <div className="border-b border-slate-200 px-5 py-4">
                 <h3 className="text-sm font-semibold text-slate-700">Campaign Performance</h3>
+                <p className="mt-0.5 text-xs text-slate-400">Open rate and reply rate are email only. Bounce rate is across all message types.</p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50">
                       <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Campaign</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Sent</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Delivered</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Email</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">SMS</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Total</th>
                       <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Opened</th>
                       <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Replied</th>
                       <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Bounced</th>
@@ -548,8 +550,9 @@ export default function CommunicationPanel() {
                         className={`border-b border-slate-100 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-slate-50 transition-colors`}
                       >
                         <td className="px-5 py-3 font-medium text-slate-700">{row.name}</td>
-                        <td className="px-4 py-3 text-right text-slate-600">{row.sent.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-right text-slate-600">{row.delivered.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">{row.emailSent.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">{row.smsSent.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right font-medium text-slate-700">{row.sent.toLocaleString()}</td>
                         <td className="px-4 py-3 text-right text-slate-600">{row.opened.toLocaleString()}</td>
                         <td className="px-4 py-3 text-right text-slate-600">{row.replied.toLocaleString()}</td>
                         <td className="px-4 py-3 text-right text-slate-600">{row.bounced.toLocaleString()}</td>

@@ -33,13 +33,15 @@ export interface TimeSeriesPoint {
 
 export interface CampaignStat {
   name: string;
+  emailSent: number;
+  smsSent: number;
   sent: number;
   delivered: number;
   opened: number;
   replied: number;
   bounced: number;
-  openRate: string;
-  replyRate: string;
+  openRate: string;   // email delivered denominator
+  replyRate: string;  // email delivered denominator
   bounceRate: string;
 }
 
@@ -153,34 +155,44 @@ export function buildTimeSeries(messages: MockMessage[], groupBy: 'week' | 'mont
 }
 
 export function buildCampaignStats(messages: MockMessage[]): CampaignStat[] {
-  // Group by campaign name; null campaign = 'Individual'
-  const map = new Map<string, { sent: number; delivered: number; opened: number; replied: number; bounced: number }>();
+  const map = new Map<string, {
+    emailSent: number; smsSent: number;
+    emailDelivered: number; // denominator for open/reply rates
+    opened: number; replied: number; bounced: number;
+  }>();
 
   for (const msg of messages) {
     if (msg.direction !== 'outbound') continue;
     const key = msg.campaign ?? 'Individual Messages';
-    if (!map.has(key)) map.set(key, { sent: 0, delivered: 0, opened: 0, replied: 0, bounced: 0 });
-    const entry = map.get(key)!;
-    entry.sent++;
-    if (msg.status === 'bounced') entry.bounced++;
-    else if (msg.status === 'delivered') entry.delivered++;
-    else if (msg.status === 'opened') { entry.delivered++; entry.opened++; }
-    else if (msg.status === 'replied') { entry.delivered++; entry.opened++; entry.replied++; }
+    if (!map.has(key)) map.set(key, { emailSent: 0, smsSent: 0, emailDelivered: 0, opened: 0, replied: 0, bounced: 0 });
+    const e = map.get(key)!;
+    if (msg.type === 'email') e.emailSent++; else e.smsSent++;
+    if (msg.status === 'bounced') {
+      e.bounced++;
+    } else if (msg.status === 'delivered') {
+      if (msg.type === 'email') e.emailDelivered++;
+    } else if (msg.status === 'opened') {
+      if (msg.type === 'email') { e.emailDelivered++; e.opened++; }
+    } else if (msg.status === 'replied') {
+      if (msg.type === 'email') { e.emailDelivered++; e.opened++; e.replied++; }
+    }
   }
 
   const stats: CampaignStat[] = [];
   for (const [name, s] of map.entries()) {
-    const deliveredEmails = s.delivered + s.opened + s.replied;
+    const sent = s.emailSent + s.smsSent;
     stats.push({
       name,
-      sent: s.sent,
-      delivered: deliveredEmails,
-      opened: s.opened + s.replied,
+      emailSent: s.emailSent,
+      smsSent: s.smsSent,
+      sent,
+      delivered: s.emailDelivered,
+      opened: s.opened,
       replied: s.replied,
       bounced: s.bounced,
-      openRate: deliveredEmails > 0 ? `${((s.opened + s.replied) / deliveredEmails * 100).toFixed(1)}%` : '—',
-      replyRate: deliveredEmails > 0 ? `${(s.replied / deliveredEmails * 100).toFixed(1)}%` : '—',
-      bounceRate: s.sent > 0 ? `${(s.bounced / s.sent * 100).toFixed(1)}%` : '—',
+      openRate: s.emailDelivered > 0 ? `${(s.opened / s.emailDelivered * 100).toFixed(1)}%` : '—',
+      replyRate: s.emailDelivered > 0 ? `${(s.replied / s.emailDelivered * 100).toFixed(1)}%` : '—',
+      bounceRate: sent > 0 ? `${(s.bounced / sent * 100).toFixed(1)}%` : '—',
     });
   }
 
