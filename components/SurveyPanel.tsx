@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import {
   BarChart, Bar, LineChart, Line,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { subMonths } from 'date-fns';
 import { MOCK_CANDIDATES, MOCK_SURVEYS, MOCK_SURVEY_RESPONSES, getMockTagGroups } from '@/lib/mockData';
@@ -13,6 +13,7 @@ import {
   buildResponseTimeSeries,
   computeQuestionResults,
   computePassFailStats,
+  buildPassFailTimeSeries,
   exportSurveyToCSV,
   type SurveyFilters,
   type PassFailStats,
@@ -276,6 +277,11 @@ export default function SurveyPanel() {
     [filteredResponses, selectedSurvey]
   );
 
+  const passFailTimeSeries = useMemo(
+    () => buildPassFailTimeSeries(filteredResponses, selectedSurvey),
+    [filteredResponses, selectedSurvey]
+  );
+
   const handleExport = () => {
     const csv = exportSurveyToCSV(filteredResponses, selectedSurvey, MOCK_CANDIDATES);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -481,6 +487,32 @@ export default function SurveyPanel() {
               <p className="mt-1 text-2xl font-bold text-slate-800">{passFailStats.failRate.toFixed(1)}%</p>
             </div>
           </div>
+
+          {/* Pass/Fail over time */}
+          {passFailTimeSeries.length > 0 && (
+            <div className="mb-6">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Pass / Fail Over Time</p>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={passFailTimeSeries} margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: 12 }}
+                    cursor={{ fill: '#f8fafc' }}
+                  />
+                  <Legend
+                    iconType="circle"
+                    iconSize={8}
+                    wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
+                    formatter={(v) => v.charAt(0).toUpperCase() + v.slice(1)}
+                  />
+                  <Bar dataKey="passed" stackId="a" fill="#34d399" radius={[0, 0, 0, 0]} name="passed" />
+                  <Bar dataKey="failed" stackId="a" fill="#f87171" radius={[4, 4, 0, 0]} name="failed" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
           {/* Failure breakdown by question */}
           {passFailStats.questionFailRates.length > 0 && (

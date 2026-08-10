@@ -264,6 +264,50 @@ export function computeQuestionResults(
   });
 }
 
+export interface PassFailTimePoint {
+  period: string;
+  passed: number;
+  failed: number;
+}
+
+export function buildPassFailTimeSeries(
+  responses: MockSurveyResponse[],
+  survey: MockSurvey
+): PassFailTimePoint[] {
+  if (survey.evaluationMode !== 'pass_fail' || responses.length === 0) return [];
+
+  const gradable = survey.questions.filter((q) => q.correctOption !== undefined);
+  if (gradable.length === 0) return [];
+
+  const isPass = (resp: MockSurveyResponse) =>
+    gradable.every((q) => resp.answers[q.id] === q.correctOption);
+
+  const map = new Map<string, { passed: number; failed: number }>();
+  for (const resp of responses) {
+    const label = format(startOfMonth(resp.completedAt), 'MMM yyyy');
+    if (!map.has(label)) map.set(label, { passed: 0, failed: 0 });
+    const entry = map.get(label)!;
+    if (isPass(resp)) entry.passed++;
+    else entry.failed++;
+  }
+
+  const dates = responses.map((r) => r.completedAt);
+  const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+  const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+  const periodStart = startOfMonth(minDate);
+  const periodEnd = startOfMonth(maxDate);
+
+  const result: PassFailTimePoint[] = [];
+  let cur = periodStart;
+  while (cur <= periodEnd) {
+    const label = format(cur, 'MMM yyyy');
+    const entry = map.get(label) ?? { passed: 0, failed: 0 };
+    result.push({ period: label, ...entry });
+    cur = addMonths(cur, 1);
+  }
+  return result;
+}
+
 export interface QuestionFailRate {
   questionId: string;
   text: string;
