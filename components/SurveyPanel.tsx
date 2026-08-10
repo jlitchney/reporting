@@ -12,6 +12,7 @@ import {
   computeSurveyMetrics,
   buildResponseTimeSeries,
   computeQuestionResults,
+  exportSurveyToCSV,
   type SurveyFilters,
 } from '@/lib/surveyProcessor';
 
@@ -253,6 +254,17 @@ export default function SurveyPanel() {
     [filteredResponses, selectedSurvey]
   );
 
+  const handleExport = () => {
+    const csv = exportSurveyToCSV(filteredResponses, selectedSurvey, MOCK_CANDIDATES);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selectedSurvey.name.replace(/[^a-z0-9]/gi, '_')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Type distribution for info card
   const questionTypeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -336,6 +348,19 @@ export default function SurveyPanel() {
               ...availableTags.map((t) => ({ value: t, label: t })),
             ]}
           />
+
+          <div className="ml-auto flex items-end">
+            <button
+              onClick={handleExport}
+              disabled={filteredResponses.length === 0}
+              className="flex items-center gap-1.5 rounded-lg border border-[#1e3a6e] bg-[#1e3a6e] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#16305e] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+              Export CSV
+            </button>
+          </div>
         </div>
       </div>
 
