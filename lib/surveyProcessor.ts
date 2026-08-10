@@ -69,6 +69,7 @@ export interface QuestionResult {
   questionId: string;
   text: string;
   type: string;
+  correctOption?: string; // pass/fail surveys only
   // for single/multiple choice:
   distribution?: { label: string; count: number }[];
   // for number:
@@ -169,7 +170,7 @@ export function computeQuestionResults(
   survey: MockSurvey
 ): QuestionResult[] {
   return survey.questions.map((q: MockQuestion): QuestionResult => {
-    const base = { questionId: q.id, text: q.text, type: q.type };
+    const base = { questionId: q.id, text: q.text, type: q.type, correctOption: q.correctOption };
 
     if (q.type === 'single_choice') {
       const counts = new Map<string, number>();

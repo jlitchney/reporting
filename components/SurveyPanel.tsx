@@ -64,6 +64,50 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 
 // ─── Question result renderers ────────────────────────────────────────────────
 
+function PassFailChoiceResult({
+  distribution,
+  correctOption,
+}: {
+  distribution: { label: string; count: number }[];
+  correctOption: string;
+}) {
+  const total = distribution.reduce((s, d) => s + d.count, 0);
+  const max = Math.max(...distribution.map((d) => d.count), 1);
+  return (
+    <div className="space-y-2.5">
+      {distribution.map(({ label, count }) => {
+        const isCorrect = label === correctOption;
+        const pct = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
+        return (
+          <div key={label} className="flex items-center gap-3">
+            {isCorrect ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0 text-emerald-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            )}
+            <span className={`w-52 flex-shrink-0 text-sm ${isCorrect ? 'font-semibold text-emerald-700' : 'text-slate-600'}`}>
+              {label}
+            </span>
+            <div className="flex-1 h-2.5 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={`h-full rounded-full transition-all ${isCorrect ? 'bg-emerald-400' : 'bg-red-300'}`}
+                style={{ width: `${(count / max) * 100}%` }}
+              />
+            </div>
+            <span className="w-24 flex-shrink-0 text-right text-xs text-slate-500">
+              {count} ({pct}%)
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function SingleChoiceResult({ distribution }: { distribution: { label: string; count: number }[] }) {
   const max = Math.max(...distribution.map((d) => d.count), 1);
   return (
@@ -595,7 +639,9 @@ export default function SurveyPanel() {
               </div>
 
               {(qr.type === 'single_choice' || qr.type === 'multiple_choice') && qr.distribution && (
-                <SingleChoiceResult distribution={qr.distribution} />
+                qr.correctOption
+                  ? <PassFailChoiceResult distribution={qr.distribution} correctOption={qr.correctOption} />
+                  : <SingleChoiceResult distribution={qr.distribution} />
               )}
 
               {qr.type === 'number' && qr.histogram && (
