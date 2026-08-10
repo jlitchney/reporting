@@ -273,20 +273,25 @@ export default function SurveyPanel() {
     URL.revokeObjectURL(url);
   };
 
-  // Type distribution for info card
-  const questionTypeCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const q of selectedSurvey.questions) {
-      counts[q.type] = (counts[q.type] ?? 0) + 1;
-    }
-    return counts;
-  }, [selectedSurvey]);
+  const [showPreview, setShowPreview] = useState(false);
 
   return (
     <div className="space-y-6 px-6 py-6">
       {/* Survey selector */}
       <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Survey</p>
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Survey</p>
+          <button
+            onClick={() => setShowPreview(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+              <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+            </svg>
+            Preview Survey
+          </button>
+        </div>
         <div className="flex flex-wrap gap-2">
           {MOCK_SURVEYS.map((s) => (
             <button
@@ -395,12 +400,12 @@ export default function SurveyPanel() {
       {/* Metric cards */}
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-xl border border-slate-200 bg-white p-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Responses</p>
-          <p className="mt-2 text-3xl font-bold text-slate-800">{metrics.totalResponses.toLocaleString()}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Sent</p>
+          <p className="mt-2 text-3xl font-bold text-slate-800">{metrics.eligibleCandidates.toLocaleString()}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Eligible Candidates</p>
-          <p className="mt-2 text-3xl font-bold text-slate-800">{metrics.eligibleCandidates.toLocaleString()}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Responses</p>
+          <p className="mt-2 text-3xl font-bold text-slate-800">{metrics.totalResponses.toLocaleString()}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-5">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Completion Rate</p>
@@ -408,64 +413,34 @@ export default function SurveyPanel() {
         </div>
       </div>
 
-      {/* Response time series + survey info */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-5">
-          <h3 className="mb-4 text-sm font-semibold text-slate-700">Responses Over Time</h3>
-          {timeSeries.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={timeSeries} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis
-                  dataKey="period"
-                  tick={{ fontSize: 11, fill: '#94a3b8' }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: '#94a3b8' }}
-                  tickLine={false}
-                  axisLine={false}
-                  allowDecimals={false}
-                />
-                <Tooltip contentStyle={{ border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: 12 }} />
-                <Line type="monotone" dataKey="count" stroke={NAVY} strokeWidth={2} dot={false} name="Responses" />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex h-40 items-center justify-center text-sm text-slate-400">
-              No response data in this date range.
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-5">
-          <h3 className="mb-4 text-sm font-semibold text-slate-700">Survey Info</h3>
-          <p className="text-base font-semibold text-slate-800">{selectedSurvey.name}</p>
-          <p className="mt-1 text-sm text-slate-500">
-            {selectedSurvey.questions.length} question{selectedSurvey.questions.length !== 1 ? 's' : ''}
-          </p>
-          <div className="mt-4 space-y-2">
-            {Object.entries(questionTypeCounts).map(([type, count]) => (
-              <div key={type} className="flex items-center justify-between text-sm">
-                <span className="capitalize text-slate-600">{type.replace(/_/g, ' ')}</span>
-                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                  {count}
-                </span>
-              </div>
-            ))}
+      {/* Response time series */}
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 className="mb-4 text-sm font-semibold text-slate-700">Responses Over Time</h3>
+        {timeSeries.length > 0 ? (
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={timeSeries} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis
+                dataKey="period"
+                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
+              />
+              <Tooltip contentStyle={{ border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: 12 }} />
+              <Line type="monotone" dataKey="count" stroke={NAVY} strokeWidth={2} dot={false} name="Responses" />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex h-40 items-center justify-center text-sm text-slate-400">
+            No response data in this date range.
           </div>
-          <div className="mt-5 rounded-lg bg-slate-50 px-3 py-2">
-            <p className="text-xs text-slate-500">
-              Questions include:{' '}
-              {selectedSurvey.questions
-                .slice(0, 3)
-                .map((q) => q.text)
-                .join(', ')}
-              {selectedSurvey.questions.length > 3 ? '…' : ''}
-            </p>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Per-question results */}
@@ -517,6 +492,79 @@ export default function SurveyPanel() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Survey preview modal */}
+      {showPreview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setShowPreview(false)}
+        >
+          <div
+            className="relative w-full max-w-xl max-h-[80vh] overflow-y-auto rounded-2xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 rounded-t-2xl border-b border-slate-100 bg-white px-6 py-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Survey Preview</p>
+                <h2 className="mt-0.5 text-base font-bold text-slate-800">{selectedSurvey.name}</h2>
+                <p className="text-xs text-slate-400">{selectedSurvey.questions.length} questions</p>
+              </div>
+              <button
+                onClick={() => setShowPreview(false)}
+                className="mt-1 flex-shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-5 px-6 py-5">
+              {selectedSurvey.questions.map((q, idx) => (
+                <div key={q.id} className="space-y-2">
+                  <div className="flex items-start gap-2.5">
+                    <span className="flex-shrink-0 rounded-full bg-[#1e3a6e]/10 px-2 py-0.5 text-xs font-semibold text-[#1e3a6e]">
+                      {idx + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-800">{q.text}</p>
+                      <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                        {q.type.replace(/_/g, ' ')}
+                        {q.type === 'multiple_choice' && ' · select all that apply'}
+                      </p>
+                    </div>
+                  </div>
+                  {q.options && (
+                    <div className="ml-8 space-y-1.5">
+                      {q.options.map((opt) => (
+                        <div
+                          key={opt}
+                          className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600"
+                        >
+                          <span className={`h-3.5 w-3.5 flex-shrink-0 border-2 border-slate-300 ${q.type === 'multiple_choice' ? 'rounded-sm' : 'rounded-full'}`} />
+                          {opt}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {q.type === 'short_text' && (
+                    <div className="ml-8 h-9 rounded-lg border border-slate-200 bg-slate-50" />
+                  )}
+                  {q.type === 'long_text' && (
+                    <div className="ml-8 h-20 rounded-lg border border-slate-200 bg-slate-50" />
+                  )}
+                  {q.type === 'number' && (
+                    <div className="ml-8 h-9 w-32 rounded-lg border border-slate-200 bg-slate-50" />
+                  )}
+                  {q.type === 'date' && (
+                    <div className="ml-8 h-9 w-40 rounded-lg border border-slate-200 bg-slate-50" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
