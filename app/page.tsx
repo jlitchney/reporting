@@ -18,6 +18,8 @@ import CostBarWidget from '@/components/CostBarWidget';
 import CostTotalWidget from '@/components/CostTotalWidget';
 import ComparisonBarWidget from '@/components/ComparisonBarWidget';
 import ReportBuilder from '@/components/ReportBuilder';
+import CommunicationPanel from '@/components/CommunicationPanel';
+import SurveyPanel from '@/components/SurveyPanel';
 import { useClients } from '@/lib/useClients';
 import { clientNameFromFilename } from '@/lib/csvParser';
 import type { ChartConfig, ReportHistoryEntry } from '@/lib/types';
@@ -143,6 +145,7 @@ export default function Home() {
     [activeClientId, renameTab]
   );
 
+  const [section, setSection] = useState<'leads' | 'communication' | 'survey'>('leads');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSpendManager, setShowSpendManager] = useState(false);
   const [showReportBuilder, setShowReportBuilder] = useState(false);
@@ -256,7 +259,27 @@ export default function Home() {
           )}
         </header>
 
-        {activeClient && (
+        <nav className="flex items-center gap-1 border-b border-slate-200 bg-white px-6">
+          {[
+            { id: 'leads', label: 'Lead Reports' },
+            { id: 'communication', label: 'Communication' },
+            { id: 'survey', label: 'Survey Reports' },
+          ].map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setSection(s.id as 'leads' | 'communication' | 'survey')}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                section === s.id
+                  ? 'border-[#1e3a6e] text-[#1e3a6e]'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </nav>
+
+        {section === 'leads' && activeClient && (
           <TabBar
             tabs={activeClient.tabs}
             activeTabId={activeTabId}
@@ -268,7 +291,11 @@ export default function Home() {
         )}
 
         <main className="flex-1 overflow-y-auto">
-          {csvLoading ? (
+          {section === 'communication' ? (
+            <CommunicationPanel />
+          ) : section === 'survey' ? (
+            <SurveyPanel />
+          ) : csvLoading ? (
             <div className="flex h-full items-center justify-center">
               <div className="flex flex-col items-center gap-3">
                 <div className="h-7 w-7 animate-spin rounded-full border-2 border-slate-200 border-t-[#1e3a6e]" />
