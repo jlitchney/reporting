@@ -190,10 +190,15 @@ export default function SurveyPanel() {
   // Survey selector
   const [selectedSurveyId, setSelectedSurveyId] = useState(MOCK_SURVEYS[0].id);
 
-  // Date filter
-  const [datePreset, setDatePreset] = useState<DatePreset>('all');
-  const [customStart, setCustomStart] = useState('');
-  const [customEnd, setCustomEnd] = useState('');
+  // Sent date filter
+  const [sentPreset, setSentPreset] = useState<DatePreset>('all');
+  const [sentCustomStart, setSentCustomStart] = useState('');
+  const [sentCustomEnd, setSentCustomEnd] = useState('');
+
+  // Response received date filter
+  const [respPreset, setRespPreset] = useState<DatePreset>('all');
+  const [respCustomStart, setRespCustomStart] = useState('');
+  const [respCustomEnd, setRespCustomEnd] = useState('');
 
   // Tag filters: group -> set of selected tag values (OR within group, AND across groups)
   const [tagFilters, setTagFilters] = useState<Record<string, string[]>>({});
@@ -220,23 +225,24 @@ export default function SurveyPanel() {
 
   // Build filters
   const filters = useMemo((): SurveyFilters => {
-    let startDate: Date | null = null;
-    let endDate: Date | null = null;
-    if (datePreset === 'custom') {
-      startDate = customStart ? new Date(customStart) : null;
-      endDate = customEnd ? new Date(customEnd) : null;
-    } else {
-      const d = presetToDates(datePreset);
-      startDate = d.startDate;
-      endDate = d.endDate;
-    }
+    const resolveDates = (preset: DatePreset, customStart: string, customEnd: string) => {
+      if (preset === 'custom') {
+        return { start: customStart ? new Date(customStart) : null, end: customEnd ? new Date(customEnd) : null };
+      }
+      const d = presetToDates(preset);
+      return { start: d.startDate, end: d.endDate };
+    };
+    const sent = resolveDates(sentPreset, sentCustomStart, sentCustomEnd);
+    const resp = resolveDates(respPreset, respCustomStart, respCustomEnd);
     return {
-      startDate,
-      endDate,
+      sentStartDate: sent.start,
+      sentEndDate: sent.end,
+      responseStartDate: resp.start,
+      responseEndDate: resp.end,
       tagFilters,
       surveyId: selectedSurveyId,
     };
-  }, [datePreset, customStart, customEnd, tagFilters, selectedSurveyId]);
+  }, [sentPreset, sentCustomStart, sentCustomEnd, respPreset, respCustomStart, respCustomEnd, tagFilters, selectedSurveyId]);
 
   // Filtered responses
   const filteredResponses = useMemo(
@@ -311,36 +317,56 @@ export default function SurveyPanel() {
 
       {/* Filter bar */}
       <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <div className="flex flex-wrap items-end gap-4">
-          <FilterSelect
-            label="Date Range"
-            value={datePreset}
-            onChange={(v) => setDatePreset(v as DatePreset)}
-            options={DATE_PRESETS}
-          />
+        <div className="flex flex-wrap items-end gap-6">
+          {/* Survey sent date */}
+          <div className="flex flex-wrap items-end gap-2">
+            <FilterSelect
+              label="Survey Sent"
+              value={sentPreset}
+              onChange={(v) => setSentPreset(v as DatePreset)}
+              options={DATE_PRESETS}
+            />
+            {sentPreset === 'custom' && (
+              <>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Start</label>
+                  <input type="date" value={sentCustomStart} onChange={(e) => setSentCustomStart(e.target.value)}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a6e]/30" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">End</label>
+                  <input type="date" value={sentCustomEnd} onChange={(e) => setSentCustomEnd(e.target.value)}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a6e]/30" />
+                </div>
+              </>
+            )}
+          </div>
 
-          {datePreset === 'custom' && (
-            <div className="flex items-end gap-2">
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Start</label>
-                <input
-                  type="date"
-                  value={customStart}
-                  onChange={(e) => setCustomStart(e.target.value)}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a6e]/30"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">End</label>
-                <input
-                  type="date"
-                  value={customEnd}
-                  onChange={(e) => setCustomEnd(e.target.value)}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a6e]/30"
-                />
-              </div>
-            </div>
-          )}
+          <div className="self-stretch w-px bg-slate-100" />
+
+          {/* Response received date */}
+          <div className="flex flex-wrap items-end gap-2">
+            <FilterSelect
+              label="Response Received"
+              value={respPreset}
+              onChange={(v) => setRespPreset(v as DatePreset)}
+              options={DATE_PRESETS}
+            />
+            {respPreset === 'custom' && (
+              <>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Start</label>
+                  <input type="date" value={respCustomStart} onChange={(e) => setRespCustomStart(e.target.value)}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a6e]/30" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">End</label>
+                  <input type="date" value={respCustomEnd} onChange={(e) => setRespCustomEnd(e.target.value)}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a6e]/30" />
+                </div>
+              </>
+            )}
+          </div>
 
           <div className="ml-auto flex items-end">
             <button

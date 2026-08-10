@@ -36,6 +36,7 @@ export interface MockSurveyResponse {
   id: string;
   surveyId: string;
   candidateId: string;
+  sentAt: Date;
   completedAt: Date;
   answers: Record<string, string | string[] | number>;
 }
@@ -738,10 +739,13 @@ function buildResponses(
     if (rng() > completionRate) continue;
     const completedAt = randomDate(rng, startDate, endDate);
     const answers = generateSurveyAnswers(survey, cand, rng);
+    const daysBack = 3 + Math.floor(rng() * 18); // 3–20 days before completion
+    const sentAt = new Date(Math.max(completedAt.getTime() - daysBack * 86_400_000, startDate.getTime()));
     responses.push({
       id: nextRespId(),
       surveyId: survey.id,
       candidateId: cand.id,
+      sentAt,
       completedAt,
       answers,
     });

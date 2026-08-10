@@ -46,8 +46,10 @@ export function exportSurveyToCSV(
 }
 
 export interface SurveyFilters {
-  startDate: Date | null;
-  endDate: Date | null;
+  sentStartDate: Date | null;
+  sentEndDate: Date | null;
+  responseStartDate: Date | null;
+  responseEndDate: Date | null;
   tagFilters: Record<string, string[]>; // group -> selected tags; OR within group, AND across
   surveyId: string;
 }
@@ -93,12 +95,22 @@ export function filterResponses(
     if (resp.surveyId !== filters.surveyId) return false;
     if (!candidateIdSet.has(resp.candidateId)) return false;
 
-    if (filters.startDate && filters.endDate) {
-      if (!isWithinInterval(resp.completedAt, { start: filters.startDate, end: filters.endDate })) return false;
-    } else if (filters.startDate) {
-      if (resp.completedAt < filters.startDate) return false;
-    } else if (filters.endDate) {
-      if (resp.completedAt > filters.endDate) return false;
+    // Sent date filter
+    if (filters.sentStartDate && filters.sentEndDate) {
+      if (!isWithinInterval(resp.sentAt, { start: filters.sentStartDate, end: filters.sentEndDate })) return false;
+    } else if (filters.sentStartDate) {
+      if (resp.sentAt < filters.sentStartDate) return false;
+    } else if (filters.sentEndDate) {
+      if (resp.sentAt > filters.sentEndDate) return false;
+    }
+
+    // Response received date filter
+    if (filters.responseStartDate && filters.responseEndDate) {
+      if (!isWithinInterval(resp.completedAt, { start: filters.responseStartDate, end: filters.responseEndDate })) return false;
+    } else if (filters.responseStartDate) {
+      if (resp.completedAt < filters.responseStartDate) return false;
+    } else if (filters.responseEndDate) {
+      if (resp.completedAt > filters.responseEndDate) return false;
     }
 
     return true;
