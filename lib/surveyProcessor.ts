@@ -263,3 +263,60 @@ export function computeQuestionResults(
     return base;
   });
 }
+
+export interface QuestionFailRate {
+  questionId: string;
+  text: string;
+  failCount: number;
+  failRate: number; // 0–100
+}
+
+export interface PassFailStats {
+  passed: number;
+  failed: number;
+  passRate: number;
+  failRate: number;
+  questionFailRates: QuestionFailRate[]; // sorted descending by failRate
+}
+
+export function computePassFailStats(
+  responses: MockSurveyResponse[],
+  survey: MockSurvey
+): PassFailStats | null {
+  if (survey.evaluationMode !== 'pass_fail') return null;
+
+  const gradable = survey.questions.filter((q) => q.correctOption !== undefined);
+  if (gradable.length === 0) return null;
+
+  const failCounts = new Map<string, number>(gradable.map((q) => [q.id, 0]));
+  let passed = 0;
+  let failed = 0;
+
+  for (const resp of responses) {
+    let allCorrect = true;
+    for (const q of gradable) {
+      if (resp.answers[q.id] !== q.correctOption) {
+        allCorrect = false;
+        failCounts.set(q.id, (failCounts.get(q.id) ?? 0) + 1);
+      }
+    }
+    if (allCorrect) passed++;
+    else failed++;
+  }
+
+  const total = responses.length;
+  return {
+    passed,
+    failed,
+    passRate: total > 0 ? (passed / total) * 100 : 0,
+    failRate: total > 0 ? (failed / total) * 100 : 0,
+    questionFailRates: gradable
+      .map((q) => ({
+        questionId: q.id,
+        text: q.text,
+        failCount: failCounts.get(q.id) ?? 0,
+        failRate: total > 0 ? ((failCounts.get(q.id) ?? 0) / total) * 100 : 0,
+      }))
+      .sort((a, b) => b.failRate - a.failRate),
+  };
+}

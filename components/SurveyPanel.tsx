@@ -12,8 +12,10 @@ import {
   computeSurveyMetrics,
   buildResponseTimeSeries,
   computeQuestionResults,
+  computePassFailStats,
   exportSurveyToCSV,
   type SurveyFilters,
+  type PassFailStats,
 } from '@/lib/surveyProcessor';
 
 // ─── Color ─────────────────────────────────────────────────────────────────────
@@ -268,6 +270,12 @@ export default function SurveyPanel() {
     [filteredResponses, selectedSurvey]
   );
 
+  // Pass/fail stats (null for informational surveys)
+  const passFailStats = useMemo(
+    () => computePassFailStats(filteredResponses, selectedSurvey),
+    [filteredResponses, selectedSurvey]
+  );
+
   const handleExport = () => {
     const csv = exportSurveyToCSV(filteredResponses, selectedSurvey, MOCK_CANDIDATES);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -303,13 +311,20 @@ export default function SurveyPanel() {
             <button
               key={s.id}
               onClick={() => setSelectedSurveyId(s.id)}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                 selectedSurveyId === s.id
                   ? 'bg-[#1e3a6e] text-white'
                   : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
             >
               {s.name}
+              {s.evaluationMode === 'pass_fail' && (
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                  selectedSurveyId === s.id ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
+                }`}>
+                  Pass/Fail
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -439,6 +454,61 @@ export default function SurveyPanel() {
         </div>
       </div>
 
+      {/* Pass/Fail Analysis — only for pass_fail surveys */}
+      {passFailStats && filteredResponses.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-white p-5">
+          <div className="mb-5 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-slate-700">Pass / Fail Analysis</h3>
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">Pass/Fail Assessment</span>
+          </div>
+
+          {/* Summary stats */}
+          <div className="mb-6 grid grid-cols-4 gap-4">
+            <div className="rounded-lg bg-emerald-50 px-4 py-3 text-center">
+              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-600">Passed</p>
+              <p className="mt-1 text-2xl font-bold text-emerald-700">{passFailStats.passed.toLocaleString()}</p>
+            </div>
+            <div className="rounded-lg bg-red-50 px-4 py-3 text-center">
+              <p className="text-xs font-semibold uppercase tracking-wider text-red-500">Failed</p>
+              <p className="mt-1 text-2xl font-bold text-red-600">{passFailStats.failed.toLocaleString()}</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 px-4 py-3 text-center">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Pass Rate</p>
+              <p className="mt-1 text-2xl font-bold text-slate-800">{passFailStats.passRate.toFixed(1)}%</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 px-4 py-3 text-center">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Fail Rate</p>
+              <p className="mt-1 text-2xl font-bold text-slate-800">{passFailStats.failRate.toFixed(1)}%</p>
+            </div>
+          </div>
+
+          {/* Failure breakdown by question */}
+          {passFailStats.questionFailRates.length > 0 && (
+            <div>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Where Candidates Fail</p>
+              <div className="space-y-3">
+                {passFailStats.questionFailRates.map((qr, i) => (
+                  <div key={qr.questionId}>
+                    <div className="mb-1 flex items-center justify-between gap-4">
+                      <span className="text-sm text-slate-700 truncate">{qr.text}</span>
+                      <span className="flex-shrink-0 text-xs font-semibold text-slate-500">
+                        {qr.failCount} ({qr.failRate.toFixed(1)}%)
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className={`h-full rounded-full transition-all ${i === 0 ? 'bg-red-400' : i === 1 ? 'bg-orange-400' : 'bg-amber-300'}`}
+                        style={{ width: `${qr.failRate}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Response time series */}
       <div className="rounded-xl border border-slate-200 bg-white p-5">
         <h3 className="mb-4 text-sm font-semibold text-slate-700">Responses Over Time</h3>
@@ -535,7 +605,16 @@ export default function SurveyPanel() {
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Survey Preview</p>
                 <h2 className="mt-0.5 text-base font-bold text-slate-800">{selectedSurvey.name}</h2>
-                <p className="text-xs text-slate-400">{selectedSurvey.questions.length} questions</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <p className="text-xs text-slate-400">{selectedSurvey.questions.length} questions</p>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                    selectedSurvey.evaluationMode === 'pass_fail'
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {selectedSurvey.evaluationMode === 'pass_fail' ? 'Pass/Fail Assessment' : 'Informational'}
+                  </span>
+                </div>
               </div>
               <button
                 onClick={() => setShowPreview(false)}
@@ -564,15 +643,27 @@ export default function SurveyPanel() {
                   </div>
                   {q.options && (
                     <div className="ml-8 space-y-1.5">
-                      {q.options.map((opt) => (
-                        <div
-                          key={opt}
-                          className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600"
-                        >
-                          <span className={`h-3.5 w-3.5 flex-shrink-0 border-2 border-slate-300 ${q.type === 'multiple_choice' ? 'rounded-sm' : 'rounded-full'}`} />
-                          {opt}
-                        </div>
-                      ))}
+                      {q.options.map((opt) => {
+                        const isCorrect = q.correctOption === opt;
+                        return (
+                          <div
+                            key={opt}
+                            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                              isCorrect
+                                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                                : 'border-slate-200 text-slate-600'
+                            }`}
+                          >
+                            <span className={`h-3.5 w-3.5 flex-shrink-0 border-2 ${isCorrect ? 'border-emerald-400' : 'border-slate-300'} ${q.type === 'multiple_choice' ? 'rounded-sm' : 'rounded-full'}`} />
+                            <span className="flex-1">{opt}</span>
+                            {isCorrect && (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-emerald-500" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                   {q.type === 'short_text' && (

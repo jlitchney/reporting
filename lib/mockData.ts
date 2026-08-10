@@ -24,11 +24,13 @@ export interface MockQuestion {
   text: string;
   type: QuestionType;
   options?: string[];
+  correctOption?: string; // pass/fail surveys only; undefined = not gradable
 }
 
 export interface MockSurvey {
   id: string;
   name: string;
+  evaluationMode: 'informational' | 'pass_fail';
   questions: MockQuestion[];
 }
 
@@ -416,6 +418,7 @@ export const MOCK_SURVEYS: MockSurvey[] = [
   {
     id: 'survey-1',
     name: 'Candidate Interest Form',
+    evaluationMode: 'informational',
     questions: [
       {
         id: 's1q1',
@@ -456,6 +459,7 @@ export const MOCK_SURVEYS: MockSurvey[] = [
   {
     id: 'survey-2',
     name: 'Physical Fitness Self-Assessment',
+    evaluationMode: 'pass_fail',
     questions: [
       {
         id: 's2q1',
@@ -467,6 +471,7 @@ export const MOCK_SURVEYS: MockSurvey[] = [
         text: 'Can you complete 1.5 miles in under 15 minutes?',
         type: 'single_choice',
         options: ['Yes', 'No', 'Unsure'],
+        correctOption: 'Yes',
       },
       {
         id: 's2q3',
@@ -483,37 +488,69 @@ export const MOCK_SURVEYS: MockSurvey[] = [
         text: 'Do you have any physical limitations?',
         type: 'single_choice',
         options: ['No limitations', 'Minor – won\'t affect duty', 'Yes – requires accommodation'],
+        correctOption: 'No limitations',
+      },
+      {
+        id: 's2q6',
+        text: 'Are you able to lift and carry 50+ lbs as required by duty standards?',
+        type: 'single_choice',
+        options: ['Yes', 'No', 'With accommodation'],
+        correctOption: 'Yes',
       },
     ],
   },
   {
     id: 'survey-3',
     name: 'Background Questionnaire',
+    evaluationMode: 'pass_fail',
     questions: [
       {
         id: 's3q1',
-        text: 'Have you lived in-state for at least 5 years?',
+        text: 'Are you 21 years of age or older?',
         type: 'single_choice',
         options: ['Yes', 'No'],
+        correctOption: 'Yes',
       },
       {
         id: 's3q2',
-        text: 'Have you ever been convicted of a felony?',
+        text: 'Do you have a high school diploma or equivalent?',
         type: 'single_choice',
-        options: ['No', 'Yes – expunged', 'Yes – not expunged'],
+        options: ['Yes', 'No'],
+        correctOption: 'Yes',
       },
       {
         id: 's3q3',
+        text: 'Have you ever been convicted of a felony?',
+        type: 'single_choice',
+        options: ['No', 'Yes – expunged', 'Yes – not expunged'],
+        correctOption: 'No',
+      },
+      {
+        id: 's3q4',
+        text: 'Do you have a valid driver\'s license?',
+        type: 'single_choice',
+        options: ['Yes', 'No'],
+        correctOption: 'Yes',
+      },
+      {
+        id: 's3q5',
+        text: 'Are you a US citizen or authorized to work in the US?',
+        type: 'single_choice',
+        options: ['Yes', 'No'],
+        correctOption: 'Yes',
+      },
+      {
+        id: 's3q6',
         text: 'Most recent employer',
         type: 'short_text',
       },
       {
-        id: 's3q4',
+        id: 's3q7',
         text: 'Employment start date at most recent job',
         type: 'date',
       },
       {
-        id: 's3q5',
+        id: 's3q8',
         text: 'Primary reason for leaving / seeking new role',
         type: 'short_text',
       },
@@ -522,6 +559,7 @@ export const MOCK_SURVEYS: MockSurvey[] = [
   {
     id: 'survey-4',
     name: '90-Day Check-In',
+    evaluationMode: 'informational',
     questions: [
       {
         id: 's4q1',
@@ -635,13 +673,26 @@ function generateSurveyAnswers(
         } else if (q.id === 's1q3') {
           answers[q.id] = pickWeighted(q.options, [0.55, 0.25, 0.20], rng);
         } else if (q.id === 's2q2') {
-          answers[q.id] = pickWeighted(q.options, [0.65, 0.15, 0.20], rng);
+          answers[q.id] = pickWeighted(q.options, [0.68, 0.20, 0.12], rng);
         } else if (q.id === 's2q5') {
           answers[q.id] = pickWeighted(q.options, [0.72, 0.22, 0.06], rng);
+        } else if (q.id === 's2q6') {
+          answers[q.id] = pickWeighted(q.options, [0.88, 0.04, 0.08], rng);
         } else if (q.id === 's3q1') {
-          answers[q.id] = pickWeighted(q.options, [0.85, 0.15], rng);
+          // Are you 21 or older?
+          answers[q.id] = pickWeighted(q.options, [0.94, 0.06], rng);
         } else if (q.id === 's3q2') {
-          answers[q.id] = pickWeighted(q.options, [0.90, 0.07, 0.03], rng);
+          // High school diploma?
+          answers[q.id] = pickWeighted(q.options, [0.91, 0.09], rng);
+        } else if (q.id === 's3q3') {
+          // Convicted of a felony? (No / Yes-expunged / Yes-not expunged)
+          answers[q.id] = pickWeighted(q.options, [0.82, 0.12, 0.06], rng);
+        } else if (q.id === 's3q4') {
+          // Valid driver's license?
+          answers[q.id] = pickWeighted(q.options, [0.95, 0.05], rng);
+        } else if (q.id === 's3q5') {
+          // US citizen / authorized to work?
+          answers[q.id] = pickWeighted(q.options, [0.93, 0.07], rng);
         } else if (q.id === 's4q2') {
           answers[q.id] = pickWeighted(q.options, [0.35, 0.40, 0.18, 0.07], rng);
         } else if (q.id === 's4q3') {
@@ -700,9 +751,9 @@ function generateSurveyAnswers(
       case 'short_text': {
         if (q.id === 's1q6') {
           answers[q.id] = S1_MOTIVATION_TEMPLATES[Math.floor(rng() * S1_MOTIVATION_TEMPLATES.length)];
-        } else if (q.id === 's3q3') {
+        } else if (q.id === 's3q6') {
           answers[q.id] = S3_EMPLOYER_TEMPLATES[Math.floor(rng() * S3_EMPLOYER_TEMPLATES.length)];
-        } else if (q.id === 's3q5') {
+        } else if (q.id === 's3q8') {
           answers[q.id] = S3_REASON_TEMPLATES[Math.floor(rng() * S3_REASON_TEMPLATES.length)];
         } else {
           answers[q.id] = 'N/A';
