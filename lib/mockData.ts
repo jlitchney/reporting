@@ -174,6 +174,20 @@ export function filterCandidatesByTag(
   });
 }
 
+// tagFilters: { group -> selected tag values }; OR within group, AND across groups
+export function filterCandidatesByMultiTag(
+  candidates: MockCandidate[],
+  tagFilters: Record<string, string[]>
+): MockCandidate[] {
+  const active = Object.entries(tagFilters).filter(([, tags]) => tags.length > 0);
+  if (active.length === 0) return candidates;
+  return candidates.filter((c) =>
+    active.every(([group, tags]) =>
+      tags.some((tag) => c.tags.includes(`${group} > ${tag}`))
+    )
+  );
+}
+
 // ─── Messages ────────────────────────────────────────────────────────────────
 
 function randomDate(rng: () => number, start: Date, end: Date): Date {

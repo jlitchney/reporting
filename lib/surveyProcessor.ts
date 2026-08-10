@@ -1,12 +1,54 @@
 import type { MockCandidate, MockSurvey, MockSurveyResponse, MockQuestion } from './mockData';
-import { filterCandidatesByTag } from './mockData';
+import { filterCandidatesByMultiTag } from './mockData';
 import { format, startOfMonth, isWithinInterval, addMonths } from 'date-fns';
+
+function csvCell(val: unknown): string {
+  const s = Array.isArray(val) ? val.join('; ') : String(val ?? '');
+  return s.includes(',') || s.includes('"') || s.includes('\n')
+    ? `"${s.replace(/"/g, '""')}"`
+    : s;
+}
+
+export function exportSurveyToCSV(
+  responses: MockSurveyResponse[],
+  survey: MockSurvey,
+  allCandidates: MockCandidate[]
+): string {
+  const candidateMap = new Map(allCandidates.map((c) => [c.id, c]));
+
+  const tagVal = (c: MockCandidate, group: string) =>
+    c.tags.find((t) => t.startsWith(`${group} > `))?.slice(group.length + 3) ?? '';
+
+  const headers = [
+    'Response ID',
+    'Candidate Name',
+    'Position',
+    'Source',
+    'Stage',
+    'Completed At',
+    ...survey.questions.map((q) => q.text),
+  ];
+
+  const rows = responses.map((r) => {
+    const c = candidateMap.get(r.candidateId);
+    return [
+      r.id,
+      c?.name ?? '',
+      c ? tagVal(c, 'Position') : '',
+      c ? tagVal(c, 'Source') : '',
+      c ? tagVal(c, 'Stage') : '',
+      format(r.completedAt, 'yyyy-MM-dd'),
+      ...survey.questions.map((q) => r.answers[q.id] ?? ''),
+    ].map(csvCell).join(',');
+  });
+
+  return [headers.map(csvCell).join(','), ...rows].join('\n');
+}
 
 export interface SurveyFilters {
   startDate: Date | null;
   endDate: Date | null;
-  tagGroup: string | null;
-  tag: string | null;
+  tagFilters: Record<string, string[]>; // group -> selected tags; OR within group, AND across
   surveyId: string;
 }
 
@@ -44,7 +86,7 @@ export function filterResponses(
   allResponses: MockSurveyResponse[],
   filters: SurveyFilters
 ): MockSurveyResponse[] {
-  const filteredCandidates = filterCandidatesByTag(allCandidates, filters.tagGroup, filters.tag);
+  const filteredCandidates = filterCandidatesByMultiTag(allCandidates, filters.tagFilters);
   const candidateIdSet = new Set(filteredCandidates.map((c) => c.id));
 
   return allResponses.filter((resp) => {
@@ -69,7 +111,7 @@ export function computeSurveyMetrics(
   filters: SurveyFilters,
   surveys: MockSurvey[]
 ): SurveyMetrics {
-  const filteredCandidates = filterCandidatesByTag(allCandidates, filters.tagGroup, filters.tag);
+  const filteredCandidates = filterCandidatesByMultiTag(allCandidates, filters.tagFilters);
 
   // Eligible = candidates who have any response for this survey (before date filter),
   // intersected with tag-filtered candidates

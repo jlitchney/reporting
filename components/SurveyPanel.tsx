@@ -195,14 +195,23 @@ export default function SurveyPanel() {
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
 
-  // Tag filter
-  const [tagGroup, setTagGroup] = useState('');
-  const [tag, setTag] = useState('');
+  // Tag filters: group -> set of selected tag values (OR within group, AND across groups)
+  const [tagFilters, setTagFilters] = useState<Record<string, string[]>>({});
 
-  const availableTags = useMemo(() => {
-    if (!tagGroup) return [];
-    return tagGroups.find((g) => g.name === tagGroup)?.tags ?? [];
-  }, [tagGroup, tagGroups]);
+  const toggleTag = (group: string, tag: string) => {
+    setTagFilters((prev) => {
+      const current = prev[group] ?? [];
+      const next = current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag];
+      return { ...prev, [group]: next };
+    });
+  };
+
+  const isTagSelected = (group: string, tag: string) =>
+    (tagFilters[group] ?? []).includes(tag);
+
+  const hasAnyTagFilter = Object.values(tagFilters).some((t) => t.length > 0);
+
+  const clearTagFilters = () => setTagFilters({});
 
   const selectedSurvey = useMemo(
     () => MOCK_SURVEYS.find((s) => s.id === selectedSurveyId) ?? MOCK_SURVEYS[0],
@@ -224,11 +233,10 @@ export default function SurveyPanel() {
     return {
       startDate,
       endDate,
-      tagGroup: tagGroup || null,
-      tag: tag || null,
+      tagFilters,
       surveyId: selectedSurveyId,
     };
-  }, [datePreset, customStart, customEnd, tagGroup, tag, selectedSurveyId]);
+  }, [datePreset, customStart, customEnd, tagFilters, selectedSurveyId]);
 
   // Filtered responses
   const filteredResponses = useMemo(
@@ -329,26 +337,6 @@ export default function SurveyPanel() {
             </div>
           )}
 
-          <FilterSelect
-            label="Tag Group"
-            value={tagGroup}
-            onChange={(v) => { setTagGroup(v); setTag(''); }}
-            options={[
-              { value: '', label: 'All Groups' },
-              ...tagGroups.map((g) => ({ value: g.name, label: g.name })),
-            ]}
-          />
-
-          <FilterSelect
-            label="Tag"
-            value={tag}
-            onChange={setTag}
-            options={[
-              { value: '', label: tagGroup ? 'All Tags' : 'Select group first' },
-              ...availableTags.map((t) => ({ value: t, label: t })),
-            ]}
-          />
-
           <div className="ml-auto flex items-end">
             <button
               onClick={handleExport}
@@ -361,6 +349,46 @@ export default function SurveyPanel() {
               Export CSV
             </button>
           </div>
+        </div>
+
+        {/* Multi-select tag filters */}
+        <div className="mt-4 border-t border-slate-100 pt-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Filter by Tags
+              <span className="ml-1 font-normal normal-case text-slate-300">(OR within group · AND across groups)</span>
+            </p>
+            {hasAnyTagFilter && (
+              <button
+                onClick={clearTagFilters}
+                className="text-xs text-slate-400 hover:text-slate-600 underline"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+          {tagGroups.map((group) => (
+            <div key={group.name} className="flex items-start gap-3">
+              <span className="w-20 flex-shrink-0 pt-1 text-xs font-semibold text-slate-500">
+                {group.name}
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {group.tags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => toggleTag(group.name, tag)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      isTagSelected(group.name, tag)
+                        ? 'bg-[#1e3a6e] text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
