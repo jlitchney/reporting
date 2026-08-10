@@ -14,6 +14,7 @@ import {
   buildCampaignStats,
   buildUserStats,
   getCampaigns,
+  getUsers,
   type CommFilters,
 } from '@/lib/commProcessor';
 
@@ -102,12 +103,14 @@ function presetToDates(preset: DatePreset): { startDate: Date | null; endDate: D
 export default function CommunicationPanel() {
   const tagGroups = getMockTagGroups();
   const allCampaigns = useMemo(() => getCampaigns(MOCK_MESSAGES), []);
+  const allUsers = useMemo(() => getUsers(MOCK_MESSAGES), []);
 
   // Filter state
   const [datePreset, setDatePreset] = useState<DatePreset>('all');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [tagFilters, setTagFilters] = useState<Record<string, string[]>>({});
+  const [sentBy, setSentBy] = useState<string>('__all__');
   const [campaign, setCampaign] = useState<string>('__all__');
   const [type, setType] = useState<'all' | 'email' | 'sms'>('all');
   const [direction, setDirection] = useState<'all' | 'outbound' | 'inbound'>('all');
@@ -146,11 +149,12 @@ export default function CommunicationPanel() {
       endDate,
       tagFilters,
       campaign: campaignFilter,
+      sentBy: sentBy === '__all__' ? null : sentBy,
       type,
       direction,
       groupBy,
     };
-  }, [datePreset, customStart, customEnd, tagFilters, campaign, type, direction, groupBy]);
+  }, [datePreset, customStart, customEnd, tagFilters, sentBy, campaign, type, direction, groupBy]);
 
   // Filtered messages
   const filteredMessages = useMemo(
@@ -243,6 +247,16 @@ export default function CommunicationPanel() {
               </div>
             </div>
           )}
+
+          <FilterSelect
+            label="User"
+            value={sentBy}
+            onChange={setSentBy}
+            options={[
+              { value: '__all__', label: 'All Users' },
+              ...allUsers.map((u) => ({ value: u, label: u })),
+            ]}
+          />
 
           <FilterSelect
             label="Campaign"

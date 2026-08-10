@@ -7,6 +7,7 @@ export interface CommFilters {
   endDate: Date | null;
   tagFilters: Record<string, string[]>; // group -> selected tags; OR within group, AND across
   campaign: string | null; // null = all, 'individual' = no campaign
+  sentBy: string | null;  // null = all users
   type: 'all' | 'email' | 'sms';
   direction: 'all' | 'outbound' | 'inbound';
   groupBy: 'week' | 'month';
@@ -71,6 +72,9 @@ export function filterMessages(
         if (msg.campaign !== filters.campaign) return false;
       }
     }
+
+    // User filter
+    if (filters.sentBy !== null && msg.sentBy !== filters.sentBy) return false;
 
     // Type filter
     if (filters.type !== 'all' && msg.type !== filters.type) return false;
@@ -188,6 +192,14 @@ export function buildCampaignStats(messages: MockMessage[]): CampaignStat[] {
   });
 
   return stats;
+}
+
+export function getUsers(messages: MockMessage[]): string[] {
+  const set = new Set<string>();
+  for (const msg of messages) {
+    if (msg.sentBy) set.add(msg.sentBy);
+  }
+  return Array.from(set).sort();
 }
 
 export function getCampaigns(messages: MockMessage[]): string[] {
