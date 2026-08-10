@@ -257,3 +257,101 @@ export function buildUserStats(messages: MockMessage[]): UserStat[] {
     })
     .sort((a, b) => b.sent - a.sent);
 }
+
+export interface OutreachSummary {
+  sent: number;
+  emailSent: number;
+  smsSent: number;
+  opened: number;
+  replied: number;
+  candidatesReached: number;
+  openRate: number;  // 0–100, email only
+  replyRate: number; // 0–100, email only
+}
+
+export interface OutreachComparison {
+  direct: OutreachSummary;
+  campaign: OutreachSummary;
+}
+
+export function buildOutreachComparison(messages: MockMessage[]): OutreachComparison {
+  const init = () => ({
+    sent: 0, emailSent: 0, smsSent: 0, emailDelivered: 0,
+    opened: 0, replied: 0, reached: new Set<string>(),
+  });
+  const d = init();
+  const c = init();
+
+  for (const msg of messages) {
+    if (msg.direction !== 'outbound') continue;
+    const t = msg.campaign ? c : d;
+    t.sent++;
+    t.reached.add(msg.candidateId);
+    if (msg.type === 'email') {
+      t.emailSent++;
+      if (msg.status !== 'bounced') {
+        t.emailDelivered++;
+        if (msg.status === 'opened') t.opened++;
+        if (msg.status === 'replied') { t.opened++; t.replied++; }
+      }
+    } else {
+      t.smsSent++;
+    }
+  }
+
+  const summarise = (t: ReturnType<typeof init>): OutreachSummary => ({
+    sent: t.sent,
+    emailSent: t.emailSent,
+    smsSent: t.smsSent,
+    opened: t.opened,
+    replied: t.replied,
+    candidatesReached: t.reached.size,
+    openRate: t.emailDelivered > 0 ? (t.opened / t.emailDelivered) * 100 : 0,
+    replyRate: t.emailDelivered > 0 ? (t.replied / t.emailDelivered) * 100 : 0,
+  });
+
+  return { direct: summarise(d), campaign: summarise(c) };
+}
+
+export interface OutreachTimePoint {
+  period: string;
+  direct: number;
+  campaign: number;
+}
+
+export function buildOutreachTimeSeries(
+  messages: MockMessage[],
+  groupBy: 'week' | 'month'
+): OutreachTimePoint[] {
+  const outbound = messages.filter((m) => m.direction === 'outbound');
+  if (outbound.length === 0) return [];
+
+  const map = new Map<string, { direct: number; campaign: number }>();
+
+  for (const msg of outbound) {
+    const periodDate = groupBy === 'week'
+      ? startOfWeek(msg.date, { weekStartsOn: 0 })
+      : startOfMonth(msg.date);
+    const label = groupBy === 'week' ? format(periodDate, 'MMM d') : format(periodDate, 'MMM yyyy');
+    if (!map.has(label)) map.set(label, { direct: 0, campaign: 0 });
+    const entry = map.get(label)!;
+    if (msg.campaign) entry.campaign++;
+    else entry.direct++;
+  }
+
+  const dates = outbound.map((m) => m.date);
+  const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+  const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+  const periodStart = groupBy === 'week' ? startOfWeek(minDate, { weekStartsOn: 0 }) : startOfMonth(minDate);
+  const periodEnd = groupBy === 'week' ? startOfWeek(maxDate, { weekStartsOn: 0 }) : startOfMonth(maxDate);
+
+  const result: OutreachTimePoint[] = [];
+  let cur = periodStart;
+  while (cur <= periodEnd) {
+    const label = groupBy === 'week' ? format(cur, 'MMM d') : format(cur, 'MMM yyyy');
+    const entry = map.get(label) ?? { direct: 0, campaign: 0 };
+    result.push({ period: label, ...entry });
+    cur = groupBy === 'week' ? addWeeks(cur, 1) : addMonths(cur, 1);
+  }
+  return result;
+}

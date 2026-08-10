@@ -13,9 +13,12 @@ import {
   buildTimeSeries,
   buildCampaignStats,
   buildUserStats,
+  buildOutreachComparison,
+  buildOutreachTimeSeries,
   getCampaigns,
   getUsers,
   type CommFilters,
+  type OutreachComparison,
 } from '@/lib/commProcessor';
 
 // ─── Color palette ────────────────────────────────────────────────────────────
@@ -190,6 +193,16 @@ export default function CommunicationPanel() {
   const userStats = useMemo(
     () => buildUserStats(filteredMessages),
     [filteredMessages]
+  );
+
+  // Direct vs campaign comparison
+  const outreachComparison = useMemo(
+    () => buildOutreachComparison(filteredMessages),
+    [filteredMessages]
+  );
+  const outreachTimeSeries = useMemo(
+    () => buildOutreachTimeSeries(filteredMessages, groupBy),
+    [filteredMessages, groupBy]
   );
 
   // Pie data
@@ -454,6 +467,119 @@ export default function CommunicationPanel() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
+            </div>
+          </div>
+
+          {/* Direct vs Campaign Outreach */}
+          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+            <div className="border-b border-slate-200 px-5 py-4">
+              <h3 className="text-sm font-semibold text-slate-700">Direct Outreach vs Campaign Outreach</h3>
+              <p className="mt-0.5 text-xs text-slate-400">Open rate and reply rate are email only</p>
+            </div>
+            <div className="p-5 space-y-6">
+              {/* Side-by-side stat panels */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Direct */}
+                <div className="rounded-xl border border-[#1e3a6e]/20 bg-[#1e3a6e]/5 p-4">
+                  <div className="mb-4 flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#1e3a6e]" />
+                    <p className="text-sm font-semibold text-[#1e3a6e]">Recruiter Direct</p>
+                  </div>
+                  <p className="mb-3 text-[10px] font-medium uppercase tracking-wider text-slate-400">Individual messages from recruiters</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    {[
+                      { label: 'Sent', value: outreachComparison.direct.sent.toLocaleString() },
+                      { label: 'Candidates Reached', value: outreachComparison.direct.candidatesReached.toLocaleString() },
+                      { label: 'Email', value: outreachComparison.direct.emailSent.toLocaleString() },
+                      { label: 'SMS', value: outreachComparison.direct.smsSent.toLocaleString() },
+                      { label: 'Open Rate', value: `${outreachComparison.direct.openRate.toFixed(1)}%` },
+                      { label: 'Reply Rate', value: `${outreachComparison.direct.replyRate.toFixed(1)}%` },
+                    ].map(({ label, value }) => (
+                      <div key={label}>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
+                        <p className="mt-0.5 text-lg font-bold text-slate-800">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Campaign */}
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                  <div className="mb-4 flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+                    <p className="text-sm font-semibold text-blue-700">Campaign / Automation</p>
+                  </div>
+                  <p className="mb-3 text-[10px] font-medium uppercase tracking-wider text-slate-400">Messages sent via campaigns</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    {[
+                      { label: 'Sent', value: outreachComparison.campaign.sent.toLocaleString() },
+                      { label: 'Candidates Reached', value: outreachComparison.campaign.candidatesReached.toLocaleString() },
+                      { label: 'Email', value: outreachComparison.campaign.emailSent.toLocaleString() },
+                      { label: 'SMS', value: outreachComparison.campaign.smsSent.toLocaleString() },
+                      { label: 'Open Rate', value: `${outreachComparison.campaign.openRate.toFixed(1)}%` },
+                      { label: 'Reply Rate', value: `${outreachComparison.campaign.replyRate.toFixed(1)}%` },
+                    ].map(({ label, value }) => (
+                      <div key={label}>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
+                        <p className="mt-0.5 text-lg font-bold text-slate-800">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Rate comparison bars */}
+              <div className="grid grid-cols-2 gap-6">
+                {[
+                  { label: 'Open Rate (email)', direct: outreachComparison.direct.openRate, campaign: outreachComparison.campaign.openRate },
+                  { label: 'Reply Rate (email)', direct: outreachComparison.direct.replyRate, campaign: outreachComparison.campaign.replyRate },
+                ].map(({ label, direct, campaign }) => {
+                  const max = Math.max(direct, campaign, 1);
+                  return (
+                    <div key={label}>
+                      <p className="mb-2 text-xs font-semibold text-slate-500">{label}</p>
+                      <div className="space-y-2">
+                        <div>
+                          <div className="mb-1 flex justify-between text-xs text-slate-500">
+                            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#1e3a6e]" />Direct</span>
+                            <span className="font-semibold">{direct.toFixed(1)}%</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                            <div className="h-full rounded-full bg-[#1e3a6e] transition-all" style={{ width: `${(direct / max) * 100}%` }} />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="mb-1 flex justify-between text-xs text-slate-500">
+                            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-500" />Campaign</span>
+                            <span className="font-semibold">{campaign.toFixed(1)}%</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                            <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${(campaign / max) * 100}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Volume over time */}
+              {outreachTimeSeries.length > 0 && (
+                <div>
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Outbound Volume Over Time</p>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={outreachTimeSeries} margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                      <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <Tooltip contentStyle={{ border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: 12 }} cursor={{ fill: '#f8fafc' }} />
+                      <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                      <Bar dataKey="campaign" name="Campaign" stackId="a" fill={COLORS.blue} radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="direct" name="Direct" stackId="a" fill={COLORS.navy} radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </div>
           </div>
 
