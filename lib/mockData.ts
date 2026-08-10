@@ -4,6 +4,10 @@ export interface MockCandidate {
   id: string;
   name: string;
   tags: string[];
+  emailOptIn: boolean;
+  smsOptIn: boolean;
+  emailUnsubscribedAt: Date | null;
+  smsUnsubscribedAt: Date | null;
 }
 
 export interface MockMessage {
@@ -131,15 +135,29 @@ const stageArr = shuffle(
 
 // ─── Candidates ──────────────────────────────────────────────────────────────
 
-export const MOCK_CANDIDATES: MockCandidate[] = NAMES.map((name, i) => ({
-  id: `cand-${i + 1}`,
-  name,
-  tags: [
-    `Position > ${positionArr[i]}`,
-    `Source > ${sourceArr[i]}`,
-    `Stage > ${stageArr[i]}`,
-  ],
-}));
+const rng777 = makePrng(777);
+const OPT_IN_START = new Date('2025-01-01').getTime();
+const OPT_IN_END = new Date('2026-07-31').getTime();
+
+export const MOCK_CANDIDATES: MockCandidate[] = NAMES.map((name, i) => {
+  const emailOptIn = rng777() < 0.85;
+  const smsOptIn = rng777() < 0.72;
+  const emailDateRnd = rng777();
+  const smsDateRnd = rng777();
+  return {
+    id: `cand-${i + 1}`,
+    name,
+    tags: [
+      `Position > ${positionArr[i]}`,
+      `Source > ${sourceArr[i]}`,
+      `Stage > ${stageArr[i]}`,
+    ],
+    emailOptIn,
+    smsOptIn,
+    emailUnsubscribedAt: emailOptIn ? null : new Date(OPT_IN_START + Math.floor(emailDateRnd * (OPT_IN_END - OPT_IN_START))),
+    smsUnsubscribedAt: smsOptIn ? null : new Date(OPT_IN_START + Math.floor(smsDateRnd * (OPT_IN_END - OPT_IN_START))),
+  };
+});
 
 // ─── Helper: filter candidates ───────────────────────────────────────────────
 

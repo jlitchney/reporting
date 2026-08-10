@@ -2,6 +2,69 @@ import { format, startOfWeek, startOfMonth, isWithinInterval, addWeeks, addMonth
 import type { MockCandidate, MockMessage } from './mockData';
 import { filterCandidatesByMultiTag } from './mockData';
 
+export interface OptInStats {
+  total: number;
+  emailOptIn: number;
+  smsOptIn: number;
+  emailOptInRate: number;  // 0–100
+  smsOptInRate: number;    // 0–100
+}
+
+export interface UnsubscribeTimePoint {
+  period: string;
+  email: number;
+  sms: number;
+}
+
+export function computeOptInStats(candidates: MockCandidate[]): OptInStats {
+  const total = candidates.length;
+  const emailOptIn = candidates.filter((c) => c.emailOptIn).length;
+  const smsOptIn = candidates.filter((c) => c.smsOptIn).length;
+  return {
+    total,
+    emailOptIn,
+    smsOptIn,
+    emailOptInRate: total > 0 ? (emailOptIn / total) * 100 : 0,
+    smsOptInRate: total > 0 ? (smsOptIn / total) * 100 : 0,
+  };
+}
+
+export function buildUnsubscribeTimeSeries(candidates: MockCandidate[]): UnsubscribeTimePoint[] {
+  const emailMap = new Map<string, number>();
+  const smsMap = new Map<string, number>();
+
+  for (const c of candidates) {
+    if (c.emailUnsubscribedAt) {
+      const label = format(startOfMonth(c.emailUnsubscribedAt), 'MMM yyyy');
+      emailMap.set(label, (emailMap.get(label) ?? 0) + 1);
+    }
+    if (c.smsUnsubscribedAt) {
+      const label = format(startOfMonth(c.smsUnsubscribedAt), 'MMM yyyy');
+      smsMap.set(label, (smsMap.get(label) ?? 0) + 1);
+    }
+  }
+
+  const allDates: Date[] = [
+    ...candidates.filter((c) => c.emailUnsubscribedAt).map((c) => c.emailUnsubscribedAt!),
+    ...candidates.filter((c) => c.smsUnsubscribedAt).map((c) => c.smsUnsubscribedAt!),
+  ];
+  if (allDates.length === 0) return [];
+
+  const minDate = new Date(Math.min(...allDates.map((d) => d.getTime())));
+  const maxDate = new Date(Math.max(...allDates.map((d) => d.getTime())));
+  const periodStart = startOfMonth(minDate);
+  const periodEnd = startOfMonth(maxDate);
+
+  const result: UnsubscribeTimePoint[] = [];
+  let cur = periodStart;
+  while (cur <= periodEnd) {
+    const label = format(cur, 'MMM yyyy');
+    result.push({ period: label, email: emailMap.get(label) ?? 0, sms: smsMap.get(label) ?? 0 });
+    cur = addMonths(cur, 1);
+  }
+  return result;
+}
+
 export interface CommFilters {
   startDate: Date | null;
   endDate: Date | null;

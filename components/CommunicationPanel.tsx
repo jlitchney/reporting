@@ -15,6 +15,8 @@ import {
   buildUserStats,
   buildOutreachComparison,
   buildOutreachTimeSeries,
+  computeOptInStats,
+  buildUnsubscribeTimeSeries,
   getCampaigns,
   getUsers,
   type CommFilters,
@@ -165,10 +167,14 @@ export default function CommunicationPanel() {
     [filters]
   );
 
-  // Candidate IDs of filtered candidates
-  const filteredCandidateIds = useMemo(
-    () => new Set(filterCandidatesByMultiTag(MOCK_CANDIDATES, filters.tagFilters).map((c) => c.id)),
+  // Tag-filtered candidates (full objects, unaffected by message date/type filters)
+  const filteredCandidates = useMemo(
+    () => filterCandidatesByMultiTag(MOCK_CANDIDATES, filters.tagFilters),
     [filters.tagFilters]
+  );
+  const filteredCandidateIds = useMemo(
+    () => new Set(filteredCandidates.map((c) => c.id)),
+    [filteredCandidates]
   );
 
   // Metrics
@@ -203,6 +209,16 @@ export default function CommunicationPanel() {
   const outreachTimeSeries = useMemo(
     () => buildOutreachTimeSeries(filteredMessages, groupBy),
     [filteredMessages, groupBy]
+  );
+
+  // Opt-in stats (based on tag-filtered candidates only, not message filters)
+  const optInStats = useMemo(
+    () => computeOptInStats(filteredCandidates),
+    [filteredCandidates]
+  );
+  const unsubscribeTimeSeries = useMemo(
+    () => buildUnsubscribeTimeSeries(filteredCandidates),
+    [filteredCandidates]
   );
 
   // Pie data
@@ -386,6 +402,51 @@ export default function CommunicationPanel() {
               label="Candidates Reached"
               value={metrics.candidatesReached.toLocaleString()}
             />
+          </div>
+
+          {/* Candidate Communication Status */}
+          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+            <div className="border-b border-slate-200 px-5 py-4">
+              <h3 className="text-sm font-semibold text-slate-700">Candidate Communication Status</h3>
+              <p className="mt-0.5 text-xs text-slate-400">Opt-in and unsubscribe data for the selected candidate group</p>
+            </div>
+            <div className="p-5 space-y-5">
+              {/* Stat cards */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total Candidates</p>
+                  <p className="mt-2 text-3xl font-bold text-slate-800">{optInStats.total.toLocaleString()}</p>
+                </div>
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">Email Opt-In</p>
+                  <p className="mt-2 text-3xl font-bold text-slate-800">{optInStats.emailOptIn.toLocaleString()}</p>
+                  <p className="mt-1 text-xs text-slate-400">{optInStats.emailOptInRate.toFixed(1)}% of candidates</p>
+                </div>
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-600">SMS Opt-In</p>
+                  <p className="mt-2 text-3xl font-bold text-slate-800">{optInStats.smsOptIn.toLocaleString()}</p>
+                  <p className="mt-1 text-xs text-slate-400">{optInStats.smsOptInRate.toFixed(1)}% of candidates</p>
+                </div>
+              </div>
+
+              {/* Unsubscribe chart */}
+              {unsubscribeTimeSeries.length > 0 && (
+                <div>
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Unsubscribes by Month</p>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={unsubscribeTimeSeries} margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                      <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <Tooltip contentStyle={{ border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: 12 }} cursor={{ fill: '#f8fafc' }} />
+                      <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                      <Bar dataKey="email" name="Email Unsubscribes" fill={COLORS.navy} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="sms" name="SMS Unsubscribes" fill={COLORS.blue} radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Line chart */}
