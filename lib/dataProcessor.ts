@@ -24,7 +24,8 @@ function passesFilter(lead: ParsedLead, filter: string): boolean {
   if (filter.startsWith('!')) {
     return !lead.tags.get(filter.slice(1))?.applied;
   }
-  return !!lead.tags.get(filter)?.applied;
+  const entry = lead.tags.get(filter);
+  return entry?.applied != null && entry?.removed == null;
 }
 
 function testCondition(lead: ParsedLead, cond: FilterCondition): boolean {
