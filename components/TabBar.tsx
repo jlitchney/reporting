@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import type { ClientTab } from '@/lib/types';
+import ConfirmModal from './ConfirmModal';
 
 interface TabBarProps {
   tabs: ClientTab[];
@@ -22,6 +23,7 @@ export default function TabBar({
 }: TabBarProps) {
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [confirmTabId, setConfirmTabId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -79,7 +81,7 @@ export default function TabBar({
             </button>
             {tabs.length > 1 && !isEditing && (
               <button
-                onClick={(e) => { e.stopPropagation(); onRemoveTab(tab.id); }}
+                onClick={(e) => { e.stopPropagation(); setConfirmTabId(tab.id); }}
                 title="Remove tab"
                 className="absolute right-0 top-1/2 -translate-y-1/2 invisible group-hover:visible flex h-4 w-4 items-center justify-center rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 text-xs leading-none"
               >
@@ -96,6 +98,15 @@ export default function TabBar({
       >
         +
       </button>
+
+      <ConfirmModal
+        open={confirmTabId !== null}
+        title="Remove tab?"
+        message={`"${tabs.find((t) => t.id === confirmTabId)?.name ?? 'This tab'}" and all its charts will be permanently deleted.`}
+        confirmLabel="Remove"
+        onConfirm={() => { const id = confirmTabId; setConfirmTabId(null); if (id) onRemoveTab(id); }}
+        onCancel={() => setConfirmTabId(null)}
+      />
     </div>
   );
 }

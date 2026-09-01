@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, type ReactNode } from 'react';
 import AppearanceControls from './AppearanceControls';
+import ConfirmModal from './ConfirmModal';
 
 interface WidgetShellProps {
   accent: string;
@@ -49,6 +50,7 @@ export default function WidgetShell({
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
   const [configOpen, setConfigOpen] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const widgetRef = useRef<HTMLDivElement>(null);
 
   const commitTitle = () => { onTitleSave(titleDraft); setEditingTitle(false); };
@@ -158,7 +160,7 @@ export default function WidgetShell({
           )}
           {canRemove && !readOnly && (
             <button
-              onClick={() => { if (window.confirm('Remove this chart?')) onRemove(); }}
+              onClick={() => setConfirmRemove(true)}
               title="Remove chart"
               className="rounded p-1 text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-colors"
             >
@@ -230,6 +232,15 @@ export default function WidgetShell({
         <div className="h-12 w-1 rounded-full bg-slate-400" />
       </div>
     )}
+
+    <ConfirmModal
+      open={confirmRemove}
+      title="Remove chart?"
+      message="This chart will be permanently removed from the dashboard."
+      confirmLabel="Remove"
+      onConfirm={() => { setConfirmRemove(false); onRemove(); }}
+      onCancel={() => setConfirmRemove(false)}
+    />
     </div>
   );
 }

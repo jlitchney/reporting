@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import type { StoredClient } from '@/lib/useClients';
 import { clientNameFromFilename } from '@/lib/csvParser';
+import ConfirmModal from './ConfirmModal';
 
 interface SidebarProps {
   clients: StoredClient[];
@@ -28,6 +29,7 @@ export default function Sidebar({
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [confirmClientId, setConfirmClientId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -137,7 +139,7 @@ export default function Sidebar({
                     </svg>
                   </button>
                   <button
-                    onClick={() => onRemoveClient(client.id)}
+                    onClick={() => setConfirmClientId(client.id)}
                     title="Remove client"
                     className="rounded p-0.5 text-white/30 hover:text-white/80 transition-colors"
                   >
@@ -224,6 +226,15 @@ export default function Sidebar({
       <div className="border-t border-white/10 px-5 py-3">
         <p className="text-[10px] text-white/30">AllStar Talent</p>
       </div>
+
+      <ConfirmModal
+        open={confirmClientId !== null}
+        title="Remove department?"
+        message={`"${clients.find((c) => c.id === confirmClientId)?.name ?? 'This department'}" and all its data will be permanently deleted.`}
+        confirmLabel="Remove"
+        onConfirm={() => { const id = confirmClientId; setConfirmClientId(null); if (id) onRemoveClient(id); }}
+        onCancel={() => setConfirmClientId(null)}
+      />
     </aside>
   );
 }

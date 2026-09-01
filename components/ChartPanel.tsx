@@ -5,6 +5,7 @@ import type { ParsedData, ChartConfig, ChartQuery, GroupBy, TagGroup, DatePreset
 import { processChartData, processTagGroupChart, countLeadsWithFilters, countLeadsForTotal, DATE_PRESET_LABELS } from '@/lib/dataProcessor';
 import ReportBarChart from './ReportBarChart';
 import AppearanceControls from './AppearanceControls';
+import ConfirmModal from './ConfirmModal';
 
 interface ChartPanelProps {
   data: ParsedData;
@@ -139,6 +140,7 @@ export default function ChartPanel({
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
   const [configOpen, setConfigOpen] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   const updateQuery = (patch: Partial<ChartQuery>) =>
     onUpdate(id, { query: { ...query, ...patch } });
@@ -238,7 +240,7 @@ export default function ChartPanel({
           )}
           {canRemove && !readOnly && (
             <button
-              onClick={() => { if (window.confirm('Remove this chart?')) onRemove(id); }}
+              onClick={() => setConfirmRemove(true)}
               title="Remove chart"
               className="rounded p-1 text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-colors"
             >
@@ -489,6 +491,15 @@ export default function ChartPanel({
       <div className="px-4 pb-4 pt-2">
         <ReportBarChart data={chartData} color={accent} height={config.chartHeight} />
       </div>
+
+      <ConfirmModal
+        open={confirmRemove}
+        title="Remove chart?"
+        message="This chart will be permanently removed from the dashboard."
+        confirmLabel="Remove"
+        onConfirm={() => { setConfirmRemove(false); onRemove(id); }}
+        onCancel={() => setConfirmRemove(false)}
+      />
     </div>
   );
 }
