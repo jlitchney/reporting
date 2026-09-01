@@ -144,12 +144,14 @@ export function processChartData(leads: ParsedLead[], query: ChartQuery): ChartD
     if (effectiveStart && isBefore(groupDate, effectiveStart)) continue;
     if (effectiveEnd && isAfter(groupDate, effectiveEnd)) continue;
 
-    let passesFilters = true;
-    for (const filter of filters) {
-      if (!isAllCandidates && filter === metric) continue;
-      if (!passesFilter(lead, filter)) { passesFilters = false; break; }
+    const relevantFilters = filters.filter((f) => isAllCandidates || f !== metric);
+    if (relevantFilters.length > 0) {
+      const logic = query.filterLogic ?? 'AND';
+      const passes = logic === 'OR'
+        ? relevantFilters.some((f) => passesFilter(lead, f))
+        : relevantFilters.every((f) => passesFilter(lead, f));
+      if (!passes) continue;
     }
-    if (!passesFilters) continue;
 
     const periodStart = getPeriodStart(groupDate, groupBy);
     const key = periodStart.getTime();
@@ -202,11 +204,12 @@ export function processTagGroupChart(
       }
 
       if (criteria && criteria.conditions.length > 0) return evaluateCriteria(lead, criteria);
-      for (const f of filters) {
-        if (f === metric || f === tag.label) continue;
-        if (!passesFilter(lead, f)) return false;
-      }
-      return true;
+      const relevantFilters = filters.filter((f) => f !== metric && f !== tag.label);
+      if (relevantFilters.length === 0) return true;
+      const logic = query.filterLogic ?? 'AND';
+      return logic === 'OR'
+        ? relevantFilters.some((f) => passesFilter(lead, f))
+        : relevantFilters.every((f) => passesFilter(lead, f));
     }).length;
     return { period: tag.tag, count };
   });
@@ -242,12 +245,14 @@ export function processStackedBarChart(
     if (effectiveStart && isBefore(groupDate, effectiveStart)) continue;
     if (effectiveEnd && isAfter(groupDate, effectiveEnd)) continue;
 
-    let passesFilters = true;
-    for (const f of filters) {
-      if (f === metric) continue;
-      if (!passesFilter(lead, f)) { passesFilters = false; break; }
+    const relevantFilters = filters.filter((f) => f !== metric);
+    if (relevantFilters.length > 0) {
+      const logic = query.filterLogic ?? 'AND';
+      const passes = logic === 'OR'
+        ? relevantFilters.some((f) => passesFilter(lead, f))
+        : relevantFilters.every((f) => passesFilter(lead, f));
+      if (!passes) continue;
     }
-    if (!passesFilters) continue;
 
     const periodStart = getPeriodStart(groupDate, groupBy);
     const key = periodStart.getTime();
@@ -374,7 +379,8 @@ export function countLeadsForTotal(
   customStart?: Date | null,
   customEnd?: Date | null,
   filters: string[] = [],
-  criteria?: CriteriaFilter
+  criteria?: CriteriaFilter,
+  filterLogic: 'AND' | 'OR' = 'AND',
 ): number {
   const start = preset === 'custom' ? (customStart ?? null) : presetStart(preset);
   const end = preset === 'custom' ? (customEnd ?? null) : presetEnd(preset);
@@ -384,18 +390,22 @@ export function countLeadsForTotal(
     if (start && (!date || isBefore(date, start))) return false;
     if (end && date && isAfter(date, end)) return false;
     if (criteria && criteria.conditions.length > 0) return evaluateCriteria(lead, criteria);
-    for (const f of filters) {
-      if (f === metric) continue;
-      if (!passesFilter(lead, f)) return false;
-    }
-    return true;
+    const relevantFilters = filters.filter((f) => f !== metric);
+    if (relevantFilters.length === 0) return true;
+    return filterLogic === 'OR'
+      ? relevantFilters.some((f) => passesFilter(lead, f))
+      : relevantFilters.every((f) => passesFilter(lead, f));
   }).length;
 }
 
-export function countLeadsWithFilters(leads: ParsedLead[], metric: string, filters: string[]): number {
+export function countLeadsWithFilters(leads: ParsedLead[], metric: string, filters: string[], filterLogic: 'AND' | 'OR' = 'AND'): number {
   return leads.filter((lead) => {
     if (!lead.tags.get(metric)?.applied) return false;
-    return filters.every((f) => f === metric || passesFilter(lead, f));
+    const relevantFilters = filters.filter((f) => f !== metric);
+    if (relevantFilters.length === 0) return true;
+    return filterLogic === 'OR'
+      ? relevantFilters.some((f) => passesFilter(lead, f))
+      : relevantFilters.every((f) => passesFilter(lead, f));
   }).length;
 }
 

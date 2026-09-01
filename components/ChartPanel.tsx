@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import type { ParsedData, ChartConfig, ChartQuery, GroupBy, TagGroup, DatePreset } from '@/lib/types';
 import { processChartData, processTagGroupChart, countLeadsWithFilters, countLeadsForTotal, DATE_PRESET_LABELS } from '@/lib/dataProcessor';
 import ReportBarChart from './ReportBarChart';
@@ -25,6 +25,103 @@ const GROUP_OPTIONS: { label: string; value: GroupBy }[] = [
 ];
 
 const DATE_PRESETS: DatePreset[] = ['today', 'this_month', 'last_30_days', 'last_90_days', 'this_year', 'all_time', 'custom'];
+
+function FilterPicker({
+  tagGroups,
+  excludeLabels,
+  metric,
+  onAdd,
+  accent,
+}: {
+  tagGroups: TagGroup[];
+  excludeLabels: string[];
+  metric: string | null;
+  onAdd: (filter: string) => void;
+  accent: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const lc = search.toLowerCase();
+  const filtered = tagGroups
+    .map((g) => ({
+      ...g,
+      tags: g.tags.filter(
+        (t) =>
+          t.label !== metric &&
+          !excludeLabels.includes(t.label) &&
+          (lc === '' || t.tag.toLowerCase().includes(lc) || g.name.toLowerCase().includes(lc))
+      ),
+    }))
+    .filter((g) => g.tags.length > 0);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => { setOpen((o) => !o); setSearch(''); }}
+        className="flex w-full items-center gap-1.5 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-600 hover:bg-slate-50 outline-none focus:ring-2 focus:ring-blue-200"
+      >
+        <span className="text-slate-400 font-bold">+</span> Add filter
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1 w-72 rounded-lg border border-slate-200 bg-white shadow-lg overflow-hidden">
+          <div className="p-2 border-b border-slate-100">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search tags…"
+              className="w-full rounded border border-slate-200 px-2.5 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+            />
+          </div>
+          <div className="max-h-64 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-4 text-xs text-slate-400 text-center">No tags found</div>
+            ) : (
+              filtered.map((g) => (
+                <div key={g.name}>
+                  <div className="sticky top-0 bg-slate-50 border-y border-slate-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    {g.name}
+                  </div>
+                  {g.tags.map((t) => (
+                    <div key={t.label} className="flex items-center gap-1 px-1 hover:bg-slate-50 group">
+                      <button
+                        onClick={() => { onAdd(t.label); setOpen(false); setSearch(''); }}
+                        className="flex-1 text-left px-2 py-1.5 text-sm text-slate-700"
+                      >
+                        {t.tag}
+                      </button>
+                      <button
+                        onClick={() => { onAdd('!' + t.label); setOpen(false); setSearch(''); }}
+                        title="Add as NOT filter"
+                        className="flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-slate-300 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        NOT
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ChartPanel({
   data,
@@ -65,10 +162,11 @@ export default function ChartPanel({
 
   const totalCount = useMemo(() => {
     if (!query.metric) return 0;
+    const logic = query.filterLogic ?? 'AND';
     if (query.metric === '__all__') {
-      return countLeadsForTotal(leads, null, query.datePreset ?? 'all_time', query.startDate, query.endDate, query.filters);
+      return countLeadsForTotal(leads, null, query.datePreset ?? 'all_time', query.startDate, query.endDate, query.filters, undefined, logic);
     }
-    return countLeadsWithFilters(leads, query.metric, query.filters);
+    return countLeadsWithFilters(leads, query.metric, query.filters, logic);
   }, [leads, query]);
 
   return (
@@ -285,33 +383,28 @@ export default function ChartPanel({
 
             {/* Filter */}
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Filter by</label>
-              <select
-                value=""
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val && !query.filters.includes(val)) {
-                    updateQuery({ filters: [...query.filters, val] });
-                  }
-                }}
-                className="rounded border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
-              >
-                <option value="">+ Add filter</option>
-                <optgroup label="— Has tag">
-                  {tagGroups.flatMap((g) =>
-                    g.tags
-                      .filter((t) => t.label !== query.metric && !query.filters.includes(t.label) && !query.filters.includes('!' + t.label))
-                      .map((t) => <option key={t.label} value={t.label}>{t.tag}</option>)
-                  )}
-                </optgroup>
-                <optgroup label="— Does NOT have tag">
-                  {tagGroups.flatMap((g) =>
-                    g.tags
-                      .filter((t) => t.label !== query.metric && !query.filters.includes(t.label) && !query.filters.includes('!' + t.label))
-                      .map((t) => <option key={'!' + t.label} value={'!' + t.label}>NOT {t.tag}</option>)
-                  )}
-                </optgroup>
-              </select>
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Filter by</label>
+                {query.filters.length >= 2 && (
+                  <div className="flex overflow-hidden rounded border border-slate-200 text-[10px] font-semibold">
+                    <button
+                      onClick={() => updateQuery({ filterLogic: 'AND' })}
+                      className={`px-2 py-0.5 transition-colors ${(query.filterLogic ?? 'AND') === 'AND' ? 'bg-slate-700 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                    >AND</button>
+                    <button
+                      onClick={() => updateQuery({ filterLogic: 'OR' })}
+                      className={`px-2 py-0.5 transition-colors ${query.filterLogic === 'OR' ? 'bg-slate-700 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                    >OR</button>
+                  </div>
+                )}
+              </div>
+              <FilterPicker
+                tagGroups={tagGroups}
+                excludeLabels={query.filters.map((f) => f.startsWith('!') ? f.slice(1) : f)}
+                metric={query.metric}
+                onAdd={(val) => { if (!query.filters.includes(val)) updateQuery({ filters: [...query.filters, val] }); }}
+                accent={accent}
+              />
             </div>
 
             {/* Date range */}

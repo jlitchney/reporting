@@ -71,6 +71,7 @@ export type DatePreset = 'all_time' | 'this_year' | 'this_month' | 'last_30_days
 export interface ChartQuery {
   metric: string | null;
   filters: string[];
+  filterLogic?: 'AND' | 'OR';
   criteria?: CriteriaFilter;
   dateField: string;
   groupBy: GroupBy;
